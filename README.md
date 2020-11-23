@@ -1,0 +1,2 @@
+# Detector
+Detects plagiarism
