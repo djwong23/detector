@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <string.h>
+#include <math.h>
 #include <errno.h>
 
 struct wordNode {
@@ -25,6 +26,7 @@ struct JSDNode {
     double meanProb;
     double firstProb;
     double secondProb;
+    struct JSDNode *next;
 };
 
 struct finalValNode {
@@ -32,6 +34,7 @@ struct finalValNode {
     char *secondName;
     double jsd;
     int numTokens;
+    struct finalValNode *next;
 };
 
 struct arguments {
@@ -132,6 +135,13 @@ void *handleDirectory(void *input) {
 }
 
 
+//ARCHI'S TO DO LIST
+
+//an insertion function to insert words in appropriate location alphabetically in linked list
+
+//jsd function
+
+
 //analysis
 //  do a nested loop to compare two files at a time
 //  getMergedTokens - JSD
@@ -152,6 +162,10 @@ void *handleDirectory(void *input) {
 //  create a finalValNode with the names of the two files, their JSD, and the total number of tokens for the files
 //  insert node into linked list of finalValNodes sorted based on tokens
 
+struct wordNode* insertToken(struct wordNode *tokens);
+struct finalValNode* insertFinalValNode(struct finalValNode *currNode);
+struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head);
+
 int main(int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
@@ -170,5 +184,130 @@ int main(int argc, char **argv) {
     args->head = head;
     args->lock = &lock;
     handleDirectory(args);
+    struct fileNode* files = NULL;          //shared data structure from file handlings
+
+    struct finalValNode* finalValHead = NULL;       //contains all final KLD/JSD values
+
+    struct fileNode* ptrFile1 = files;      //pointers for nested loop
+    struct fileNode * ptrFile2;             //pointers for nested loop
+
+    while(ptrFile1!= NULL){
+        ptrFile2 = ptrFile1->next;
+        while(ptrFile2 != NULL){
+            finalValHead = jsd(ptrFile1, ptrFile2, finalValHead);
+            ptrFile2 = ptrFile2->next;
+        }
+        ptrFile1 = ptrFile1->next;
+    }
+    
+
+
     return 0;
 }
+
+struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head){
+    struct JSDNode* combined = NULL;
+    struct JSDNode* currLocation = NULL;
+    struct wordNode* ptr1 = file1->words;
+    struct wordNode* ptr2 =  file2->words;
+
+    while(ptr1 != NULL && ptr2 != NULL){
+        int cmp = strcmp(ptr1->word, ptr2->word);
+        struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
+        if(cmp == 0){
+            temp->token = ptr1->word;
+            temp->firstProb = ptr1->dProb;
+            temp->secondProb = ptr2->dProb;
+            temp->meanProb = ((temp->firstProb) + (temp->secondProb))/2;
+
+            ptr1 = ptr1->next;
+            ptr2 = ptr2->next;
+        }
+        else if(cmp > 0){
+            temp->token = ptr2->word;
+            temp->firstProb = 0;
+            temp->secondProb = ptr2->dProb;
+            temp->meanProb = (0+(temp->secondProb))/2;
+            ptr2 = ptr2->next;
+        }
+        else{
+            temp->token = ptr1->word;
+            temp->firstProb = ptr1->dProb;
+            temp->secondProb = 0;
+            temp->meanProb = (0+(temp->firstProb))/2;
+            ptr1 = ptr1->next;
+        }
+
+        if(combined == NULL){
+            combined = temp;
+            currLocation= combined;
+        }
+        else{
+            currLocation->next = temp;
+            currLocation = currLocation->next;
+        }
+
+    }
+
+    if(ptr1 == NULL && ptr2 != NULL){
+        while(ptr2!=NULL){
+            struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
+            temp->token = ptr2->word;
+            temp->firstProb = 0;
+            temp->secondProb = ptr2->dProb;
+            temp->meanProb = (0+(temp->secondProb))/2;
+            ptr2 = ptr2->next;
+            if(combined == NULL){
+                combined = temp;
+                currLocation= combined;
+            }
+            else{
+                currLocation->next = temp;
+                currLocation = currLocation->next;
+            }
+        }
+    }
+    else if (ptr1 != NULL && ptr2 == NULL){
+        while(ptr1!=NULL){
+            struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
+            temp->token = ptr1->word;
+            temp->firstProb = ptr1->dProb;
+            temp->secondProb = 0;
+            temp->meanProb = (0+(temp->firstProb))/2;
+            ptr1 = ptr1->next;
+            if(combined == NULL){
+                combined = temp;
+                currLocation= combined;
+            }
+            else{
+                currLocation->next = temp;
+                currLocation = currLocation->next;
+            }
+        }
+    }
+
+    struct JSDNode* currNode = combined;
+
+    double kld1 = 0;
+    double kld2 = 0;
+    int numTokensCombined = 0;
+
+    while(currNode != NULL){
+        kld1 += currNode->firstProb * log(currNode->firstProb/currLocation->meanProb);
+        kld1 += currNode->secondProb * log(currNode->secondProb/currLocation->meanProb);
+        currNode = currNode->next;
+        numTokensCombined++;
+    }
+
+    // int x = log(100);
+
+    struct finalValNode* res = (struct finalValNode*) malloc(sizeof(struct finalValNode));
+    res->firstName = file1->fileName;
+    res->secondName = file2->fileName;
+    res->numTokens = numTokensCombined; 
+    res->jsd = (kld1+kld2)/2;
+    
+
+    return head;
+}
+
