@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+
 struct wordNode {
     char *word;
     double numWords;  //needs to be a double
@@ -38,30 +39,6 @@ struct arguments {
     struct fileNode *head;
     void *lock;
 };
-//function for directories
-//  accepts directory path, pointer to shared data structure, mutex
-//  check if directory is valid
-//  iterate through directory, count number of items
-//  malloc pthread array
-//  for each item in directory
-//      if item is a file
-//          pthread create fileHandling function
-//      if item is a directory
-//          pthread create directories function
-//          add pthread to array
-//  for each pthread in array
-//      pthread_join
-//  close directory
-//directories doesn't directly use mutex bc it doesn't write to anything
-//just passes it to filehandler
-void handleDirectory(struct arguments args) {
-    char *dirPath = args.pathName;
-    DIR *currDir = opendir(dirPath);
-    struct dirent *entry = readdir(currDir);
-    while (currDir != NULL) {
-
-    }
-}
 
 //function for tokenizing - file handling
 //  check file OK and accessible
@@ -84,6 +61,74 @@ void handleDirectory(struct arguments args) {
 //  unlock mutex
 void handleFile(struct arguments *args);
 
+//function for directories
+//  accepts directory path, pointer to shared data structure, mutex
+//  check if directory is valid
+//  iterate through directory, count number of items
+//  malloc pthread array
+//  for each item in directory
+//      if item is a file
+//          pthread create fileHandling function
+//      if item is a directory
+//          pthread create directories function
+//          add pthread to array
+//  for each pthread in array
+//      pthread_join
+//  close directory
+//directories doesn't directly use mutex bc it doesn't write to anything
+//just passes it to filehandler
+void *handleDirectory(struct arguments *args) {
+    char *dirPath = args->pathName;
+    printf("Examining %s\n", dirPath);
+    DIR *currDir = opendir(dirPath);
+    if (currDir == NULL) {
+        printf("Directory %s is inaccessible. Returning...\n", dirPath);
+        return NULL;
+    }
+    void **pThreads = malloc(sizeof(void *) * 10); //need to track all pthreads for joining
+    if (pThreads == NULL) return NULL;
+    int numPThreads = 10;
+    int currPThread = 0;
+    while (currDir != NULL) {
+        errno = 0;
+        struct dirent *entry = readdir(currDir);
+        if (entry == NULL && errno == -1) { //file that can't be accessed will not terminate program
+            printf("Directory entry is inaccessible. Continuing...\n");
+            continue;
+        }
+        else if (entry == NULL) {
+            printf("End of directory reached. Returning...\n");
+            return NULL;
+        }
+        else if (entry->d_type == DT_DIR) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            pthread_t thread;
+            if (currPThread == numPThreads) { //dynamically resizing pthread array
+                numPThreads *= 2;
+                pThreads = realloc(pThreads, sizeof(void *) * numPThreads);
+            }
+            pThreads[currPThread++] = &thread;
+            struct arguments *newArgs = malloc(sizeof(struct arguments));
+            char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
+            strcpy(newPathName, args->pathName);
+            strcat(newPathName, entry->d_name);
+            strcat(newPathName, "/\0");
+            newArgs->pathName = malloc(strlen(newPathName) + 1);
+            strcpy(newArgs->pathName, newPathName);
+            newArgs->head = args->head;
+            newArgs->lock = args->lock;
+            pthread_create(&thread, NULL, handleDirectory, newArgs);
+        }
+
+    }
+    int i;
+    for (i = 0; i < numPThreads; i++) {
+        pthread_join(pThreads[i], NULL);
+    }
+}
+
+
 //analysis
 //  do a nested loop to compare two files at a time
 //  getMergedTokens - JSD
@@ -105,20 +150,22 @@ void handleFile(struct arguments *args);
 //  insert node into linked list of finalValNodes sorted based on tokens
 
 int main(int argc, char **argv) {
-    char *directory = malloc(sizeof(argv[1]) + 1);
+    char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
-    strcat(directory, "/");
+    strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
     printf("%s\n", directory);
     if (opendir(directory) == NULL) {
         printf("Initial directory is inaccessible. Terminating. \n");
         return EXIT_FAILURE;
     }
+
     struct fileNode *head = malloc(sizeof(struct fileNode));
     pthread_mutex_t lock;
     struct arguments *args = malloc(sizeof(struct arguments));
-    args->pathName = directory;
+    args->pathName = malloc(strlen(directory) + 1);
+    strcpy(args->pathName, directory);
     args->head = head;
     args->lock = &lock;
-    handleDirectory(*args);
+    handleDirectory(args);
     return 0;
 }
