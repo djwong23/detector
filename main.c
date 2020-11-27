@@ -83,48 +83,50 @@ void *handleDirectory(struct arguments *args) {
     DIR *currDir = opendir(dirPath);
     if (currDir == NULL) {
         printf("Directory %s is inaccessible. Returning...\n", dirPath);
-        return NULL;
     }
-    void **pThreads = malloc(sizeof(void *) * 10); //need to track all pthreads for joining
-    if (pThreads == NULL) return NULL;
-    int numPThreads = 10;
-    int currPThread = 0;
-    while (currDir != NULL) {
-        errno = 0;
-        struct dirent *entry = readdir(currDir);
-        if (entry == NULL && errno == -1) { //file that can't be accessed will not terminate program
-            printf("Directory entry is inaccessible. Continuing...\n");
-            continue;
-        }
-        else if (entry == NULL) {
-            printf("End of directory reached. Returning...\n");
-            return NULL;
-        }
-        else if (entry->d_type == DT_DIR) {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+    else {
+        void **pThreads = malloc(sizeof(void *) * 10); //need to track all pthreads for joining
+        int numPThreads = 10;
+        int currPThread = 0;
+        while (currDir != NULL) {
+            errno = 0;
+            struct dirent *entry = readdir(currDir);
+            if (entry == NULL && errno == -1) { //file that can't be accessed will not terminate program
+                printf("Directory entry is inaccessible. Continuing...\n");
                 continue;
-            pthread_t thread;
-            if (currPThread == numPThreads) { //dynamically resizing pthread array
-                numPThreads *= 2;
-                pThreads = realloc(pThreads, sizeof(void *) * numPThreads);
-            }
-            pThreads[currPThread++] = &thread;
-            struct arguments *newArgs = malloc(sizeof(struct arguments));
-            char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
-            strcpy(newPathName, args->pathName);
-            strcat(newPathName, entry->d_name);
-            strcat(newPathName, "/\0");
-            newArgs->pathName = malloc(strlen(newPathName) + 1);
-            strcpy(newArgs->pathName, newPathName);
-            newArgs->head = args->head;
-            newArgs->lock = args->lock;
-            pthread_create(&thread, NULL, handleDirectory, newArgs);
-        }
+            } else if (entry == NULL) {
+                printf("End of directory %s reached.\n", dirPath);
+                break;
 
-    }
-    int i;
-    for (i = 0; i < numPThreads; i++) {
-        pthread_join(pThreads[i], NULL);
+            } else if (entry->d_type == DT_DIR) {
+                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                    continue;
+                pthread_t thread;
+                if (currPThread == numPThreads) { //dynamically resizing pthread array
+                    numPThreads *= 2;
+                    pThreads = realloc(pThreads, sizeof(void *) * numPThreads);
+                }
+                pThreads[currPThread++] = &thread;
+                struct arguments *newArgs = malloc(sizeof(struct arguments));
+                char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
+                strcpy(newPathName, args->pathName);
+                strcat(newPathName, entry->d_name);
+                strcat(newPathName, "/\0");
+                newArgs->pathName = malloc(strlen(newPathName) + 1);
+                strcpy(newArgs->pathName, newPathName);
+                newArgs->head = args->head;
+                newArgs->lock = args->lock;
+                pthread_create(&thread, NULL, handleDirectory, newArgs);
+            } else {
+                printf("%s\n", entry->d_name);
+            }
+
+        }
+        int i;
+        printf("Joining threads...\n");
+        for (i = 0; i < currPThread; i++) {
+            pthread_join(pThreads[i], NULL);
+        }
     }
 }
 
