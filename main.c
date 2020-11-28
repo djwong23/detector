@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <ctype.h>
 
 struct wordNode {
     char *word;
@@ -61,6 +63,118 @@ struct arguments {
 //  unlock mutex
 void *handleFile(void *input) {
     struct arguments *args = (struct arguments *) input;
+    int fileDesc = open(args->pathName, O_RDONLY);
+    if (fileDesc == -1) {
+        printf("File %s is inaccessible. Returning...\n", args->pathName);
+        return NULL;
+    }
+    printf("Examining file %s\n", args->pathName);
+    struct fileNode *file = malloc(sizeof(struct fileNode));
+    file->fileName = malloc((strlen(args->pathName)) + 1);
+    strcpy(file->fileName, args->pathName);
+    file->next = NULL;
+    file->wordCount = 0;
+    file->words = NULL;
+    pthread_mutex_lock(args->lock);
+    struct fileNode *head = args->head;
+    if (head->wordCount == -1) {
+        head->fileName = file->fileName;
+        head->next = file->next;
+        head->wordCount = file->wordCount;
+        head->words = file->words;
+        printf("%s is the first filename\n", head->fileName);
+    } else {
+        struct fileNode *ptr = head;
+        while (ptr->next != NULL) {
+            ptr = ptr->next;
+        }
+        ptr->next = file;
+        printf("%s is a file that has been inserted\n", ptr->fileName);
+    }
+
+    int fileSize = lseek(fileDesc, 0, SEEK_END);
+    lseek(fileDesc, 0, SEEK_SET);
+    int maxBufSize = 20;
+    char *buf = malloc(maxBufSize);
+    //strcpy(buf, "\0");
+    int curBufPosition = 0;
+    char c = '\0';
+
+
+    for (int i = 0; i < (int)(sizeof(char) * fileSize); i++) {
+        read(fileDesc, &c, sizeof(char));
+        printf("The character is %c\n", c);
+        if (isalpha(c) || c == '-') {
+            c = tolower(c);
+            memcpy(&buf[curBufPosition], &c, 1);
+            printf("%s is the buffer\n", buf);
+            curBufPosition++;
+            if (curBufPosition == maxBufSize) {
+                maxBufSize *= 2;
+                buf = realloc(buf, maxBufSize);
+            }
+        } else if (isspace(c) || i == sizeof(char) * fileSize - 1) {
+            if (curBufPosition > 0) {
+                buf[curBufPosition] = '\0';
+
+                if (file->words == NULL) {
+                    file->words = malloc(sizeof(struct wordNode));
+                    file->words->word = malloc(strlen(buf) + 1);
+                    strcpy(file->words->word, buf);
+                    file->words->numWords = 1;
+                    file->words->next = NULL;
+                    file->words->dProb = 0;
+                }
+                else {
+                    struct wordNode *ptr =  file->words;
+                    while (1) {
+                        if (strcmp("hello", buf) == 0) {
+                            ptr->numWords++;
+                            break;
+                        }
+                        else if (ptr->next != NULL) {
+                            ptr = ptr->next;
+                        }
+                        else {
+                            struct wordNode *newWord = malloc(sizeof(struct wordNode));
+                            newWord->numWords = 1;
+                            newWord->word = malloc(strlen(buf) + 1);
+                            strcpy(newWord->word, buf);
+                            newWord->dProb = 0;
+                            newWord->next = NULL;
+                            ptr->next = newWord;
+                            break;
+                        }
+                    }
+                }
+                free(buf);
+                buf = NULL;
+                curBufPosition = 0;
+                buf = malloc(maxBufSize);
+
+            }
+
+        }
+
+
+    }
+    pthread_mutex_unlock(args->lock);
+    struct fileNode *ptr = file;
+    struct wordNode *wordPtr = ptr->words;
+    while (1) {
+       printf("%s is the word!\n", wordPtr->word);
+       wordPtr = wordPtr->next;
+       if (wordPtr == NULL) {
+           break;
+       }
+    }
+
+
+
+
+
+
+
 //  printf("This is %s\n", args->pathName);
 
     return NULL;
@@ -104,7 +218,6 @@ void *handleDirectory(void *input) {
         if (entry == NULL) {
             printf("End of directory %s reached.\n", dirPath);
             break;
-
         }
         if (entry->d_type == DT_DIR && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
@@ -119,7 +232,9 @@ void *handleDirectory(void *input) {
             char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
             strcpy(newPathName, args->pathName);
             strcat(newPathName, entry->d_name);
-            strcat(newPathName, "/\0");
+            if (entry->d_type == DT_DIR)
+                strcat(newPathName, "/");
+            strcat(newPathName, "\0");
             newArgs->pathName = malloc(strlen(newPathName) + 1);
             strcpy(newArgs->pathName, newPathName);
             newArgs->head = args->head;
@@ -172,6 +287,7 @@ int main(__unused int argc, char **argv) {
     }
 
     struct fileNode *head = malloc(sizeof(struct fileNode));
+    head->wordCount = -1;
     pthread_mutex_t lock;
     struct arguments *args = malloc(sizeof(struct arguments));
     args->pathName = malloc(strlen(directory) + 1);
@@ -179,5 +295,11 @@ int main(__unused int argc, char **argv) {
     args->head = head;
     args->lock = &lock;
     handleDirectory(args);
+    struct fileNode *ptr = args->head;
+    printf("The files are: ");
+    while (ptr != NULL) {
+        printf("%s, ", ptr->fileName);
+        ptr = ptr->next;
+    }
     return 0;
 }
