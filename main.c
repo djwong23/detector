@@ -59,7 +59,12 @@ struct arguments {
 //  lock mutex
 //      push fileNode to shared DS by number of words
 //  unlock mutex
-void handleFile(struct arguments *args);
+void *handleFile(void *input) {
+    struct arguments *args = (struct arguments *) input;
+//  printf("This is %s\n", args->pathName);
+
+    return NULL;
+}
 
 //function for directories
 //  accepts directory path, pointer to shared data structure, mutex
@@ -95,13 +100,16 @@ void *handleDirectory(void *input) {
         if (entry == NULL && errno == -1) { //file that can't be accessed will not terminate program
             printf("Directory entry is inaccessible. Continuing...\n");
             continue;
-        } else if (entry == NULL) {
+        }
+        if (entry == NULL) {
             printf("End of directory %s reached.\n", dirPath);
             break;
 
-        } else if (entry->d_type == DT_DIR) {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
+        }
+        if (entry->d_type == DT_DIR && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+        if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
             pthread_t thread;
             if (currPThread == numPThreads) { //dynamically resizing pthread array
                 numPThreads *= 2;
@@ -116,16 +124,17 @@ void *handleDirectory(void *input) {
             strcpy(newArgs->pathName, newPathName);
             newArgs->head = args->head;
             newArgs->lock = args->lock;
-            pthread_create(&thread, NULL, handleDirectory, newArgs);
+            if (entry->d_type == DT_DIR)
+                pthread_create(&thread, NULL, handleDirectory, newArgs);
+            else
+                pthread_create(&thread, NULL, handleFile, newArgs);
             pThreads[currPThread++] = thread;
-        } else {
-            printf("%s\n", entry->d_name);
         }
 
     }
-    int i;
+
     printf("Joining threads...\n");
-    for (i = 0; i < currPThread; i++) {
+    for (int i = 0; i < currPThread; i++) {
         pthread_join(pThreads[i], NULL);
     }
     return NULL;
@@ -152,7 +161,7 @@ void *handleDirectory(void *input) {
 //  create a finalValNode with the names of the two files, their JSD, and the total number of tokens for the files
 //  insert node into linked list of finalValNodes sorted based on tokens
 
-int main(int argc, char **argv) {
+int main(__unused int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
     strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
