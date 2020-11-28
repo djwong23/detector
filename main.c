@@ -9,7 +9,7 @@
 
 struct wordNode {
     char *word;
-    double numWords;  //needs to be a double
+    int numWords;  //needs to be a double
     double dProb;  //needs to be a double
     struct wordNode *next;
 };
@@ -162,29 +162,123 @@ void *handleDirectory(void *input) {
 //  create a finalValNode with the names of the two files, their JSD, and the total number of tokens for the files
 //  insert node into linked list of finalValNodes sorted based on tokens
 
-struct wordNode* insertToken(struct wordNode *tokens);
-struct finalValNode* insertFinalValNode(struct finalValNode *currNode);
+struct wordNode* insertToken(struct wordNode *tokens, struct wordNode* iToken);
+struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
 struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head);
 
 int main(int argc, char **argv) {
-    char *directory = malloc(strlen(argv[1]) + 2);
-    strcpy(directory, argv[1]);
-    strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
-    printf("%s\n", directory);
-    if (opendir(directory) == NULL) {
-        printf("Initial directory is inaccessible. Terminating. \n");
-        return EXIT_FAILURE;
+    // char *directory = malloc(strlen(argv[1]) + 2);
+    // strcpy(directory, argv[1]);
+    // strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
+    // printf("%s\n", directory);
+    // if (opendir(directory) == NULL) {
+    //     printf("Initial directory is inaccessible. Terminating. \n");
+    //     return EXIT_FAILURE;
+    // }
+
+    // struct fileNode *head = malloc(sizeof(struct fileNode));
+    // pthread_mutex_t lock;
+    // struct arguments *args = malloc(sizeof(struct arguments));
+    // args->pathName = malloc(strlen(directory) + 1);
+    // strcpy(args->pathName, directory);
+    // args->head = head;
+    // args->lock = &lock;
+    // handleDirectory(args);
+
+    //A.TXT
+    struct fileNode* files = (struct fileNode*) malloc(sizeof(struct fileNode));          //shared data structure from file handlings
+
+    files->fileName = "a.txt";
+    files->wordCount=4;
+    files->next = NULL;
+
+    struct wordNode* wordA1 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordA1->word="hi";
+    wordA1->numWords=2;
+    wordA1->dProb=0.5;
+
+    struct wordNode* wordA2 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordA2->word="there";
+    wordA2->numWords=2;
+    wordA2->dProb=0.5;
+    wordA2->next = NULL;
+
+    wordA1->next = wordA2;
+    files->words=wordA1;
+
+    //B.TXT
+    struct fileNode* bfile = (struct fileNode*) malloc(sizeof(struct fileNode));          //shared data structure from file handlings
+
+    bfile->fileName = "b.txt";
+    bfile->wordCount=4;
+    bfile->next = NULL;
+
+    struct wordNode* wordb1 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordb1->word="hi";
+    wordb1->numWords=2;
+    wordb1->dProb=0.5;
+
+    struct wordNode* wordb2 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordb2->word="out";
+    wordb2->numWords=1;
+    wordb2->dProb=0.25;
+    wordb2->next = NULL;
+
+    struct wordNode* wordb3 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordb3->word="there";
+    wordb3->numWords=1;
+    wordb3->dProb=0.25;
+    wordb3->next = NULL;
+
+    wordb1->next = wordb2;
+    wordb2->next = wordb3;
+    bfile->words=wordb1;
+
+    files->next=bfile;
+
+
+
+    struct fileNode* p = files;
+    while(p!=NULL){
+        printf("FileName: %s\n", p->fileName);
+        struct wordNode* pw = p->words;
+        while(pw!=NULL){
+            printf("\t%s %d %lf\n", pw->word, pw->numWords, pw->dProb);
+            pw=pw->next;
+        }
+        p = p->next;
     }
 
-    struct fileNode *head = malloc(sizeof(struct fileNode));
-    pthread_mutex_t lock;
-    struct arguments *args = malloc(sizeof(struct arguments));
-    args->pathName = malloc(strlen(directory) + 1);
-    strcpy(args->pathName, directory);
-    args->head = head;
-    args->lock = &lock;
-    handleDirectory(args);
-    struct fileNode* files = NULL;          //shared data structure from file handlings
+    struct wordNode* itok = (struct wordNode*) malloc(sizeof(struct wordNode));
+    itok->word="potato";
+    itok->numWords=2;
+    itok->dProb=0.2;
+    itok->next = NULL;
+
+    bfile->words = insertToken(bfile->words, itok);
+
+    struct wordNode* itok2 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    itok2->word="archi";
+    itok2->numWords=2;
+    itok2->dProb=0.2;
+    itok2->next = NULL;
+
+    bfile->words = insertToken(bfile->words, itok2);
+
+    p = files;
+    while(p!=NULL){
+        printf("FileName: %s\n", p->fileName);
+        struct wordNode* pw = p->words;
+        while(pw!=NULL){
+            printf("\t%s %d %lf\n", pw->word, pw->numWords, pw->dProb);
+            pw=pw->next;
+        }
+        p = p->next;
+    }
+
+
+    struct fileNode* b = (struct fileNode*) malloc(sizeof(struct fileNode));
+
 
     struct finalValNode* finalValHead = NULL;       //contains all final KLD/JSD values
 
@@ -310,4 +404,44 @@ struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct 
 
     return head;
 }
+
+
+struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode){
+    struct finalValNode* currNode = head;
+    struct finalValNode* prevNode = NULL;
+    int insertNumTokens = insertNode->numTokens;
+    while(currNode != NULL && insertNumTokens < currNode->numTokens){
+        prevNode = currNode;
+        currNode = currNode->next;
+    }
+
+    if(prevNode == NULL){
+        insertNode->next = currNode;
+        return insertNode;
+    }
+
+    prevNode->next = insertNode;
+    insertNode->next = currNode;
+    return head;
+}
+
+struct wordNode* insertToken(struct wordNode *tokens, struct wordNode* iToken){
+    struct wordNode* curr = tokens;
+    struct wordNode* prev = NULL;
+    
+    while(curr != NULL && strcmp(curr->word, iToken->word) <= 0){
+        prev = curr;
+        curr=curr->next;
+    }
+
+    if(prev == NULL){
+        iToken->next = curr;
+        return iToken;
+    }
+    prev->next = iToken;
+    iToken->next=curr;
+    return tokens;
+}
+
+
 
