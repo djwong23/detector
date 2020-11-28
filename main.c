@@ -9,7 +9,7 @@
 
 struct wordNode {
     char *word;
-    int numWords;  //needs to be a double
+    double numWords;  //needs to be a double
     double dProb;  //needs to be a double
     struct wordNode *next;
 };
@@ -167,26 +167,26 @@ struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalV
 struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head);
 
 int main(int argc, char **argv) {
-    // char *directory = malloc(strlen(argv[1]) + 2);
-    // strcpy(directory, argv[1]);
-    // strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
-    // printf("%s\n", directory);
-    // if (opendir(directory) == NULL) {
-    //     printf("Initial directory is inaccessible. Terminating. \n");
-    //     return EXIT_FAILURE;
-    // }
+    char *directory = malloc(strlen(argv[1]) + 2);
+    strcpy(directory, argv[1]);
+    strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
+    printf("%s\n", directory);
+    if (opendir(directory) == NULL) {
+        printf("Initial directory is inaccessible. Terminating. \n");
+        return EXIT_FAILURE;
+    }
 
-    // struct fileNode *head = malloc(sizeof(struct fileNode));
-    // pthread_mutex_t lock;
-    // struct arguments *args = malloc(sizeof(struct arguments));
-    // args->pathName = malloc(strlen(directory) + 1);
-    // strcpy(args->pathName, directory);
-    // args->head = head;
-    // args->lock = &lock;
-    // handleDirectory(args);
+    struct fileNode *head = malloc(sizeof(struct fileNode));
+    pthread_mutex_t lock;
+    struct arguments *args = malloc(sizeof(struct arguments));
+    args->pathName = malloc(strlen(directory) + 1);
+    strcpy(args->pathName, directory);
+    args->head = head;
+    args->lock = &lock;
+    handleDirectory(args);
 
     //A.TXT
-    struct fileNode* files = (struct fileNode*) malloc(sizeof(struct fileNode));          //shared data structure from file handlings
+    struct fileNode* files = (struct fileNode*) malloc(sizeof(struct fileNode));         
 
     files->fileName = "a.txt";
     files->wordCount=4;
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
     files->words=wordA1;
 
     //B.TXT
-    struct fileNode* bfile = (struct fileNode*) malloc(sizeof(struct fileNode));          //shared data structure from file handlings
+    struct fileNode* bfile = (struct fileNode*) malloc(sizeof(struct fileNode));         
 
     bfile->fileName = "b.txt";
     bfile->wordCount=4;
@@ -237,48 +237,46 @@ int main(int argc, char **argv) {
     files->next=bfile;
 
 
+    //C.TXT
+    struct fileNode* cfile = (struct fileNode*) malloc(sizeof(struct fileNode));         
+
+    cfile->fileName = "c.txt";
+    cfile->wordCount=9;
+    cfile->next = NULL;
+
+    struct wordNode* wordc1 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordc1->word="hi";
+    wordc1->numWords=2;
+    wordc1->dProb=(2.0/9);
+
+    struct wordNode* wordc2 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordc2->word="jane";
+    wordc2->numWords=3;
+    wordc2->dProb=(3/9.0);
+    wordc2->next = NULL;
+
+    struct wordNode* wordc3 = (struct wordNode*) malloc(sizeof(struct wordNode));
+    wordc3->word="jello";
+    wordc3->numWords=4;
+    wordc3->dProb=(4/9.0);
+    wordc3->next = NULL;
+
+    wordc1->next = wordc2;
+    wordc2->next = wordc3;
+    cfile->words=wordc1;
+
+    bfile->next=cfile;
 
     struct fileNode* p = files;
     while(p!=NULL){
         printf("FileName: %s\n", p->fileName);
         struct wordNode* pw = p->words;
         while(pw!=NULL){
-            printf("\t%s %d %lf\n", pw->word, pw->numWords, pw->dProb);
+            printf("\t%s %lf %lf\n", pw->word, pw->numWords, pw->dProb);
             pw=pw->next;
         }
         p = p->next;
     }
-
-    struct wordNode* itok = (struct wordNode*) malloc(sizeof(struct wordNode));
-    itok->word="potato";
-    itok->numWords=2;
-    itok->dProb=0.2;
-    itok->next = NULL;
-
-    bfile->words = insertToken(bfile->words, itok);
-
-    struct wordNode* itok2 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    itok2->word="archi";
-    itok2->numWords=2;
-    itok2->dProb=0.2;
-    itok2->next = NULL;
-
-    bfile->words = insertToken(bfile->words, itok2);
-
-    p = files;
-    while(p!=NULL){
-        printf("FileName: %s\n", p->fileName);
-        struct wordNode* pw = p->words;
-        while(pw!=NULL){
-            printf("\t%s %d %lf\n", pw->word, pw->numWords, pw->dProb);
-            pw=pw->next;
-        }
-        p = p->next;
-    }
-
-
-    struct fileNode* b = (struct fileNode*) malloc(sizeof(struct fileNode));
-
 
     struct finalValNode* finalValHead = NULL;       //contains all final KLD/JSD values
 
@@ -288,10 +286,18 @@ int main(int argc, char **argv) {
     while(ptrFile1!= NULL){
         ptrFile2 = ptrFile1->next;
         while(ptrFile2 != NULL){
+            // printf("Comparing %s and %s\n", ptrFile1->fileName, ptrFile2->fileName);
             finalValHead = jsd(ptrFile1, ptrFile2, finalValHead);
             ptrFile2 = ptrFile2->next;
         }
         ptrFile1 = ptrFile1->next;
+    }
+
+    //RESULTS 
+    struct finalValNode* finalPtr = finalValHead;
+    while(finalPtr != NULL){
+        printf("%s %s %lf\n", finalPtr->firstName, finalPtr->secondName, finalPtr->jsd);
+        finalPtr = finalPtr->next;
     }
     
 
@@ -387,22 +393,27 @@ struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct 
     int numTokensCombined = 0;
 
     while(currNode != NULL){
-        kld1 += currNode->firstProb * log(currNode->firstProb/currLocation->meanProb);
-        kld1 += currNode->secondProb * log(currNode->secondProb/currLocation->meanProb);
+        // printf("%s: %lf %lf %lf\n", currNode->token, currNode->firstProb, currNode->secondProb, currNode->meanProb);        
+        if(currNode->firstProb != 0){
+            double x = currNode->firstProb * (log((currNode->firstProb/currNode->meanProb))/log(10));
+            kld1 += x;
+        }
+        if(currNode->secondProb != 0){
+            double x = currNode->secondProb * (log((currNode->secondProb/currNode->meanProb))/log(10));
+            kld2 += x;
+        }
         currNode = currNode->next;
         numTokensCombined++;
     }
-
-    // int x = log(100);
 
     struct finalValNode* res = (struct finalValNode*) malloc(sizeof(struct finalValNode));
     res->firstName = file1->fileName;
     res->secondName = file2->fileName;
     res->numTokens = numTokensCombined; 
     res->jsd = (kld1+kld2)/2;
+    res->next=NULL;
     
-
-    return head;
+    return insertFinalValNode(head, res);
 }
 
 
@@ -410,7 +421,7 @@ struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalV
     struct finalValNode* currNode = head;
     struct finalValNode* prevNode = NULL;
     int insertNumTokens = insertNode->numTokens;
-    while(currNode != NULL && insertNumTokens < currNode->numTokens){
+    while(currNode != NULL && insertNumTokens >= currNode->numTokens){
         prevNode = currNode;
         currNode = currNode->next;
     }
