@@ -6,7 +6,7 @@ OUTPUTS=Asst2
 all: main
 
 main : Asst2.c
-	$(CC) $(CFLAGS) -o detector Asst2.c
+	$(CC) $(CFLAGS) -o detector Asst2.c -lm
 
 clean:
 	rm $(OUTPUTS) 

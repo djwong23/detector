@@ -244,12 +244,17 @@ void *handleDirectory(void *input) {
                 pthread_create(&thread, NULL, handleDirectory, newArgs);
             else
                 pthread_create(&thread, NULL, handleFile, newArgs);
-            pThreads[currPThread++] = thread;
+            pThreads[currPThread] = thread;
+	    currPThread++;
         }
     }
 
     for (int i = 0; i < currPThread; i++) {
-        pthread_join(pThreads[i], NULL);
+        int r = pthread_join(pThreads[i], NULL);
+	if (r != 0) {
+		printf("An error has ocurred while joining threads at %s \n", dirPath);
+		return NULL;
+	}
     }
     return NULL;
 }
@@ -287,7 +292,7 @@ struct wordNode *insertToken(struct wordNode *tokens, struct wordNode *iToken);
 struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
 struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct finalValNode *head);
 
-int main(__unused int argc, char **argv) {
+int main(int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
     strcat(directory, "/\0");//adding / to end of directory ensures it will be read
@@ -307,120 +312,120 @@ int main(__unused int argc, char **argv) {
     handleDirectory(args);
 
 
-    //A.TXT
-    struct fileNode *files = (struct fileNode *) malloc(sizeof(struct fileNode));
-
-    files->fileName = "a.txt";
-    files->wordCount = 4;
-    files->next = NULL;
-
-    struct wordNode *wordA1 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordA1->word = "hi";
-    wordA1->numWords = 2;
-    wordA1->dProb = 0.5;
-
-    struct wordNode *wordA2 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordA2->word = "there";
-    wordA2->numWords = 2;
-    wordA2->dProb = 0.5;
-    wordA2->next = NULL;
-
-    wordA1->next = wordA2;
-    files->words = wordA1;
-
-    //B.TXT
-    struct fileNode *bfile = (struct fileNode *) malloc(sizeof(struct fileNode));
-
-    bfile->fileName = "b.txt";
-    bfile->wordCount = 4;
-    bfile->next = NULL;
-
-    struct wordNode *wordb1 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordb1->word = "hi";
-    wordb1->numWords = 2;
-    wordb1->dProb = 0.5;
-
-    struct wordNode *wordb2 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordb2->word = "out";
-    wordb2->numWords = 1;
-    wordb2->dProb = 0.25;
-    wordb2->next = NULL;
-
-    struct wordNode *wordb3 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordb3->word = "there";
-    wordb3->numWords = 1;
-    wordb3->dProb = 0.25;
-    wordb3->next = NULL;
-
-    wordb1->next = wordb2;
-    wordb2->next = wordb3;
-    bfile->words = wordb1;
-
-    files->next = bfile;
-
-
-    //C.TXT
-    struct fileNode *cfile = (struct fileNode *) malloc(sizeof(struct fileNode));
-
-    cfile->fileName = "c.txt";
-    cfile->wordCount = 9;
-    cfile->next = NULL;
-
-    struct wordNode *wordc1 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordc1->word = "hi";
-    wordc1->numWords = 2;
-    wordc1->dProb = (2.0 / 9);
-
-    struct wordNode *wordc2 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordc2->word = "jane";
-    wordc2->numWords = 3;
-    wordc2->dProb = (3 / 9.0);
-    wordc2->next = NULL;
-
-    struct wordNode *wordc3 = (struct wordNode *) malloc(sizeof(struct wordNode));
-    wordc3->word = "jello";
-    wordc3->numWords = 4;
-    wordc3->dProb = (4 / 9.0);
-    wordc3->next = NULL;
-
-    wordc1->next = wordc2;
-    wordc2->next = wordc3;
-    cfile->words = wordc1;
-
-    bfile->next = cfile;
-
-    struct fileNode *p = files;
-    while (p != NULL) {
-        printf("FileName: %s\n", p->fileName);
-        struct wordNode *pw = p->words;
-        while (pw != NULL) {
-            printf("\t%s %lf %lf\n", pw->word, pw->numWords, pw->dProb);
-            pw = pw->next;
-        }
-        p = p->next;
-    }
-
-    struct finalValNode *finalValHead = NULL;//contains all final KLD/JSD values
-
-    struct fileNode *ptrFile1 = files;//pointers for nested loop
-    struct fileNode *ptrFile2;        //pointers for nested loop
-
-    while (ptrFile1 != NULL) {
-        ptrFile2 = ptrFile1->next;
-        while (ptrFile2 != NULL) {
-            // printf("Comparing %s and %s\n", ptrFile1->fileName, ptrFile2->fileName);
-            finalValHead = jsd(ptrFile1, ptrFile2, finalValHead);
-            ptrFile2 = ptrFile2->next;
-        }
-        ptrFile1 = ptrFile1->next;
-    }
-
-    //RESULTS
-    struct finalValNode *finalPtr = finalValHead;
-    while (finalPtr != NULL) {
-        printf("%s %s %lf\n", finalPtr->firstName, finalPtr->secondName, finalPtr->jsd);
-        finalPtr = finalPtr->next;
-    }
+//    //A.TXT
+//    struct fileNode *files = (struct fileNode *) malloc(sizeof(struct fileNode));
+//
+//    files->fileName = "a.txt";
+//    files->wordCount = 4;
+//    files->next = NULL;
+//
+//    struct wordNode *wordA1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordA1->word = "hi";
+//    wordA1->numWords = 2;
+//    wordA1->dProb = 0.5;
+//
+//    struct wordNode *wordA2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordA2->word = "there";
+//    wordA2->numWords = 2;
+//    wordA2->dProb = 0.5;
+//    wordA2->next = NULL;
+//
+//    wordA1->next = wordA2;
+//    files->words = wordA1;
+//
+//    //B.TXT
+//    struct fileNode *bfile = (struct fileNode *) malloc(sizeof(struct fileNode));
+//
+//    bfile->fileName = "b.txt";
+//    bfile->wordCount = 4;
+//    bfile->next = NULL;
+//
+//    struct wordNode *wordb1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordb1->word = "hi";
+//    wordb1->numWords = 2;
+//    wordb1->dProb = 0.5;
+//
+//    struct wordNode *wordb2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordb2->word = "out";
+//    wordb2->numWords = 1;
+//    wordb2->dProb = 0.25;
+//    wordb2->next = NULL;
+//
+//    struct wordNode *wordb3 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordb3->word = "there";
+//    wordb3->numWords = 1;
+//    wordb3->dProb = 0.25;
+//    wordb3->next = NULL;
+//
+//    wordb1->next = wordb2;
+//    wordb2->next = wordb3;
+//    bfile->words = wordb1;
+//
+//    files->next = bfile;
+//
+//
+//    //C.TXT
+//    struct fileNode *cfile = (struct fileNode *) malloc(sizeof(struct fileNode));
+//
+//    cfile->fileName = "c.txt";
+//    cfile->wordCount = 9;
+//    cfile->next = NULL;
+//
+//    struct wordNode *wordc1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordc1->word = "hi";
+//    wordc1->numWords = 2;
+//    wordc1->dProb = (2.0 / 9);
+//
+//    struct wordNode *wordc2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordc2->word = "jane";
+//    wordc2->numWords = 3;
+//    wordc2->dProb = (3 / 9.0);
+//    wordc2->next = NULL;
+//
+//    struct wordNode *wordc3 = (struct wordNode *) malloc(sizeof(struct wordNode));
+//    wordc3->word = "jello";
+//    wordc3->numWords = 4;
+//    wordc3->dProb = (4 / 9.0);
+//    wordc3->next = NULL;
+//
+//    wordc1->next = wordc2;
+//    wordc2->next = wordc3;
+//    cfile->words = wordc1;
+//
+//    bfile->next = cfile;
+//
+//    struct fileNode *p = files;
+//    while (p != NULL) {
+//        printf("FileName: %s\n", p->fileName);
+//        struct wordNode *pw = p->words;
+//        while (pw != NULL) {
+//            printf("\t%s %lf %lf\n", pw->word, pw->numWords, pw->dProb);
+//            pw = pw->next;
+//        }
+//        p = p->next;
+//    }
+//
+//    struct finalValNode *finalValHead = NULL;//contains all final KLD/JSD values
+//
+//    struct fileNode *ptrFile1 = files;//pointers for nested loop
+//    struct fileNode *ptrFile2;        //pointers for nested loop
+//
+//    while (ptrFile1 != NULL) {
+//        ptrFile2 = ptrFile1->next;
+//        while (ptrFile2 != NULL) {
+//            // printf("Comparing %s and %s\n", ptrFile1->fileName, ptrFile2->fileName);
+//            finalValHead = jsd(ptrFile1, ptrFile2, finalValHead);
+//            ptrFile2 = ptrFile2->next;
+//        }
+//        ptrFile1 = ptrFile1->next;
+//    }
+//
+//    //RESULTS
+//    struct finalValNode *finalPtr = finalValHead;
+//    while (finalPtr != NULL) {
+//        printf("%s %s %lf\n", finalPtr->firstName, finalPtr->secondName, finalPtr->jsd);
+//        finalPtr = finalPtr->next;
+//    }
 
 
     struct fileNode *ptr = args->head;
