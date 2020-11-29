@@ -17,7 +17,7 @@ struct wordNode {
 
 struct fileNode {
     char *fileName;
-    int wordCount;
+    double wordCount;
     struct fileNode *next;
     struct wordNode *words;
 };
@@ -68,29 +68,28 @@ void *handleFile(void *input) {
         printf("File %s is inaccessible. Returning...\n", args->pathName);
         return NULL;
     }
-    printf("Examining file %s\n", args->pathName);
     struct fileNode *file = malloc(sizeof(struct fileNode));
-    file->fileName = malloc((strlen(args->pathName)) + 1);
-    strcpy(file->fileName, args->pathName);
-    file->next = NULL;
-    file->wordCount = 0;
-    file->words = NULL;
-    pthread_mutex_lock(args->lock);
     struct fileNode *head = args->head;
     if (head->wordCount == -1) {
-        head->fileName = file->fileName;
-        head->next = file->next;
-        head->wordCount = file->wordCount;
-        head->words = file->words;
-        printf("%s is the first filename\n", head->fileName);
+//        head->fileName = file->fileName;
+//        head->next = file->next;
+//        head->wordCount = file->wordCount;
+//        head->words = file->words;
+        file = head;
     } else {
         struct fileNode *ptr = head;
         while (ptr->next != NULL) {
             ptr = ptr->next;
         }
         ptr->next = file;
-        printf("%s is a file that has been inserted\n", ptr->fileName);
     }
+    file->fileName = malloc((strlen(args->pathName)) + 1);
+    strcpy(file->fileName, args->pathName);
+    file->next = NULL;
+    file->wordCount = 0;
+    file->words = NULL;
+    pthread_mutex_lock(args->lock);
+
 
     int fileSize = lseek(fileDesc, 0, SEEK_END);
     lseek(fileDesc, 0, SEEK_SET);
@@ -101,22 +100,24 @@ void *handleFile(void *input) {
     char c = '\0';
 
 
-    for (int i = 0; i < (int)(sizeof(char) * fileSize); i++) {
+    for (int i = 0; i < (int) (sizeof(char) * fileSize); i++) {
         read(fileDesc, &c, sizeof(char));
-        printf("The character is %c\n", c);
         if (isalpha(c) || c == '-') {
             c = tolower(c);
             memcpy(&buf[curBufPosition], &c, 1);
-            printf("%s is the buffer\n", buf);
             curBufPosition++;
             if (curBufPosition == maxBufSize) {
                 maxBufSize *= 2;
                 buf = realloc(buf, maxBufSize);
             }
-        } else if (isspace(c) || i == sizeof(char) * fileSize - 1) {
+            if (i < (int) (sizeof(char) * fileSize) - 1) {
+                continue;
+            }
+        }
+        if (isspace(c) || i == sizeof(char) * fileSize - 1) {
+            file->wordCount+=1;
             if (curBufPosition > 0) {
                 buf[curBufPosition] = '\0';
-
                 if (file->words == NULL) {
                     file->words = malloc(sizeof(struct wordNode));
                     file->words->word = malloc(strlen(buf) + 1);
@@ -124,18 +125,15 @@ void *handleFile(void *input) {
                     file->words->numWords = 1;
                     file->words->next = NULL;
                     file->words->dProb = 0;
-                }
-                else {
-                    struct wordNode *ptr =  file->words;
+                } else {
+                    struct wordNode *ptr = file->words;
                     while (1) {
-                        if (strcmp("hello", buf) == 0) {
-                            ptr->numWords++;
+                        if (strcmp(ptr->word, buf) == 0) {
+                            ptr->numWords+=1;
                             break;
-                        }
-                        else if (ptr->next != NULL) {
+                        } else if (ptr->next != NULL) {
                             ptr = ptr->next;
-                        }
-                        else {
+                        } else {
                             struct wordNode *newWord = malloc(sizeof(struct wordNode));
                             newWord->numWords = 1;
                             newWord->word = malloc(strlen(buf) + 1);
@@ -158,16 +156,13 @@ void *handleFile(void *input) {
 
 
     }
-    pthread_mutex_unlock(args->lock);
-    struct fileNode *ptr = file;
-    struct wordNode *wordPtr = ptr->words;
-    while (1) {
-       printf("%s is the word!\n", wordPtr->word);
-       wordPtr = wordPtr->next;
-       if (wordPtr == NULL) {
-           break;
-       }
+    struct wordNode *ptr = file->words;
+    while (ptr != NULL) {
+        ptr->dProb = ptr->numWords / file->wordCount;
+        ptr = ptr->next;
     }
+    pthread_mutex_unlock(args->lock);
+
 
 
 
@@ -199,7 +194,6 @@ void *handleFile(void *input) {
 void *handleDirectory(void *input) {
     struct arguments *args = (struct arguments *) input;
     char *dirPath = args->pathName;
-    printf("Examining %s\n", dirPath);
     DIR *currDir = opendir(dirPath);
     if (currDir == NULL) {
         printf("Directory %s is inaccessible. Returning...\n", dirPath);
@@ -216,7 +210,6 @@ void *handleDirectory(void *input) {
             continue;
         }
         if (entry == NULL) {
-            printf("End of directory %s reached.\n", dirPath);
             break;
         }
         if (entry->d_type == DT_DIR && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
@@ -248,7 +241,6 @@ void *handleDirectory(void *input) {
 
     }
 
-    printf("Joining threads...\n");
     for (int i = 0; i < currPThread; i++) {
         pthread_join(pThreads[i], NULL);
     }
@@ -280,7 +272,6 @@ int main(__unused int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
     strcat(directory, "/\0"); //adding / to end of directory ensures it will be read
-    printf("%s\n", directory);
     if (opendir(directory) == NULL) {
         printf("Initial directory is inaccessible. Terminating. \n");
         return EXIT_FAILURE;
@@ -296,10 +287,16 @@ int main(__unused int argc, char **argv) {
     args->lock = &lock;
     handleDirectory(args);
     struct fileNode *ptr = args->head;
-    printf("The files are: ");
     while (ptr != NULL) {
-        printf("%s, ", ptr->fileName);
+        printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
+        struct wordNode *wordPtr = ptr->words;
+        while (wordPtr != NULL) {
+            printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
+            wordPtr = wordPtr->next;
+        }
+        printf("NULL\n|\n|\n");
         ptr = ptr->next;
     }
+    printf("NULL\n");
     return 0;
 }
