@@ -171,6 +171,7 @@ void *handleFile(void *input) {
             }
         }
     }
+    close(fileDesc);
     struct wordNode *ptr = file->words;
     while (ptr != NULL) {
         ptr->dProb = ptr->numWords / file->wordCount;
@@ -248,6 +249,7 @@ void *handleDirectory(void *input) {
 	    currPThread++;
         }
     }
+    closedir(currDir);
 
     for (int i = 0; i < currPThread; i++) {
         int r = pthread_join(pThreads[i], NULL);

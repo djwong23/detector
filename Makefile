@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-pthread -Wall
-OUTPUTS=Asst2
+OUTPUTS=detector
 .PHONY: all clean
 
 all:main
