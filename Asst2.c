@@ -178,7 +178,6 @@ void *handleFile(void *input) {
     }
 
 
-
     //  printf("This is %s\n", args->pathName);
 
     return NULL;
@@ -284,9 +283,9 @@ void *handleDirectory(void *input) {
 //  insert node into linked list of finalValNodes sorted based on tokens
 
 
-struct wordNode* insertToken(struct wordNode *tokens, struct wordNode* iToken);
-struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
-struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head);
+struct wordNode *insertToken(struct wordNode *tokens, struct wordNode *iToken);
+struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
+struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct finalValNode *head);
 
 int main(__unused int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
@@ -309,106 +308,106 @@ int main(__unused int argc, char **argv) {
 
 
     //A.TXT
-    struct fileNode* files = (struct fileNode*) malloc(sizeof(struct fileNode));         
+    struct fileNode *files = (struct fileNode *) malloc(sizeof(struct fileNode));
 
     files->fileName = "a.txt";
-    files->wordCount=4;
+    files->wordCount = 4;
     files->next = NULL;
 
-    struct wordNode* wordA1 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordA1->word="hi";
-    wordA1->numWords=2;
-    wordA1->dProb=0.5;
+    struct wordNode *wordA1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordA1->word = "hi";
+    wordA1->numWords = 2;
+    wordA1->dProb = 0.5;
 
-    struct wordNode* wordA2 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordA2->word="there";
-    wordA2->numWords=2;
-    wordA2->dProb=0.5;
+    struct wordNode *wordA2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordA2->word = "there";
+    wordA2->numWords = 2;
+    wordA2->dProb = 0.5;
     wordA2->next = NULL;
 
     wordA1->next = wordA2;
-    files->words=wordA1;
+    files->words = wordA1;
 
     //B.TXT
-    struct fileNode* bfile = (struct fileNode*) malloc(sizeof(struct fileNode));         
+    struct fileNode *bfile = (struct fileNode *) malloc(sizeof(struct fileNode));
 
     bfile->fileName = "b.txt";
-    bfile->wordCount=4;
+    bfile->wordCount = 4;
     bfile->next = NULL;
 
-    struct wordNode* wordb1 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordb1->word="hi";
-    wordb1->numWords=2;
-    wordb1->dProb=0.5;
+    struct wordNode *wordb1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordb1->word = "hi";
+    wordb1->numWords = 2;
+    wordb1->dProb = 0.5;
 
-    struct wordNode* wordb2 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordb2->word="out";
-    wordb2->numWords=1;
-    wordb2->dProb=0.25;
+    struct wordNode *wordb2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordb2->word = "out";
+    wordb2->numWords = 1;
+    wordb2->dProb = 0.25;
     wordb2->next = NULL;
 
-    struct wordNode* wordb3 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordb3->word="there";
-    wordb3->numWords=1;
-    wordb3->dProb=0.25;
+    struct wordNode *wordb3 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordb3->word = "there";
+    wordb3->numWords = 1;
+    wordb3->dProb = 0.25;
     wordb3->next = NULL;
 
     wordb1->next = wordb2;
     wordb2->next = wordb3;
-    bfile->words=wordb1;
+    bfile->words = wordb1;
 
-    files->next=bfile;
+    files->next = bfile;
 
 
     //C.TXT
-    struct fileNode* cfile = (struct fileNode*) malloc(sizeof(struct fileNode));         
+    struct fileNode *cfile = (struct fileNode *) malloc(sizeof(struct fileNode));
 
     cfile->fileName = "c.txt";
-    cfile->wordCount=9;
+    cfile->wordCount = 9;
     cfile->next = NULL;
 
-    struct wordNode* wordc1 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordc1->word="hi";
-    wordc1->numWords=2;
-    wordc1->dProb=(2.0/9);
+    struct wordNode *wordc1 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordc1->word = "hi";
+    wordc1->numWords = 2;
+    wordc1->dProb = (2.0 / 9);
 
-    struct wordNode* wordc2 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordc2->word="jane";
-    wordc2->numWords=3;
-    wordc2->dProb=(3/9.0);
+    struct wordNode *wordc2 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordc2->word = "jane";
+    wordc2->numWords = 3;
+    wordc2->dProb = (3 / 9.0);
     wordc2->next = NULL;
 
-    struct wordNode* wordc3 = (struct wordNode*) malloc(sizeof(struct wordNode));
-    wordc3->word="jello";
-    wordc3->numWords=4;
-    wordc3->dProb=(4/9.0);
+    struct wordNode *wordc3 = (struct wordNode *) malloc(sizeof(struct wordNode));
+    wordc3->word = "jello";
+    wordc3->numWords = 4;
+    wordc3->dProb = (4 / 9.0);
     wordc3->next = NULL;
 
     wordc1->next = wordc2;
     wordc2->next = wordc3;
-    cfile->words=wordc1;
+    cfile->words = wordc1;
 
-    bfile->next=cfile;
+    bfile->next = cfile;
 
-    struct fileNode* p = files;
-    while(p!=NULL){
+    struct fileNode *p = files;
+    while (p != NULL) {
         printf("FileName: %s\n", p->fileName);
-        struct wordNode* pw = p->words;
-        while(pw!=NULL){
+        struct wordNode *pw = p->words;
+        while (pw != NULL) {
             printf("\t%s %lf %lf\n", pw->word, pw->numWords, pw->dProb);
-            pw=pw->next;
+            pw = pw->next;
         }
         p = p->next;
     }
 
-    struct finalValNode* finalValHead = NULL;       //contains all final KLD/JSD values
+    struct finalValNode *finalValHead = NULL;//contains all final KLD/JSD values
 
-    struct fileNode* ptrFile1 = files;      //pointers for nested loop
-    struct fileNode * ptrFile2;             //pointers for nested loop
+    struct fileNode *ptrFile1 = files;//pointers for nested loop
+    struct fileNode *ptrFile2;        //pointers for nested loop
 
-    while(ptrFile1!= NULL){
+    while (ptrFile1 != NULL) {
         ptrFile2 = ptrFile1->next;
-        while(ptrFile2 != NULL){
+        while (ptrFile2 != NULL) {
             // printf("Comparing %s and %s\n", ptrFile1->fileName, ptrFile2->fileName);
             finalValHead = jsd(ptrFile1, ptrFile2, finalValHead);
             ptrFile2 = ptrFile2->next;
@@ -416,14 +415,12 @@ int main(__unused int argc, char **argv) {
         ptrFile1 = ptrFile1->next;
     }
 
-    //RESULTS 
-    struct finalValNode* finalPtr = finalValHead;
-    while(finalPtr != NULL){
+    //RESULTS
+    struct finalValNode *finalPtr = finalValHead;
+    while (finalPtr != NULL) {
         printf("%s %s %lf\n", finalPtr->firstName, finalPtr->secondName, finalPtr->jsd);
         finalPtr = finalPtr->next;
     }
-    
-
 
 
     struct fileNode *ptr = args->head;
@@ -442,128 +439,121 @@ int main(__unused int argc, char **argv) {
     return 0;
 }
 
-struct finalValNode* jsd(struct fileNode* file1, struct fileNode* file2, struct finalValNode* head){
-    struct JSDNode* combined = NULL;
-    struct JSDNode* currLocation = NULL;
-    struct wordNode* ptr1 = file1->words;
-    struct wordNode* ptr2 =  file2->words;
+struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct finalValNode *head) {
+    struct JSDNode *combined = NULL;
+    struct JSDNode *currLocation = NULL;
+    struct wordNode *ptr1 = file1->words;
+    struct wordNode *ptr2 = file2->words;
 
-    while(ptr1 != NULL && ptr2 != NULL){
+    while (ptr1 != NULL && ptr2 != NULL) {
         int cmp = strcmp(ptr1->word, ptr2->word);
-        struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
-        if(cmp == 0){
+        struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
+        if (cmp == 0) {
             temp->token = ptr1->word;
             temp->firstProb = ptr1->dProb;
             temp->secondProb = ptr2->dProb;
-            temp->meanProb = ((temp->firstProb) + (temp->secondProb))/2;
+            temp->meanProb = ((temp->firstProb) + (temp->secondProb)) / 2;
 
             ptr1 = ptr1->next;
             ptr2 = ptr2->next;
-        }
-        else if(cmp > 0){
+        } else if (cmp > 0) {
             temp->token = ptr2->word;
             temp->firstProb = 0;
             temp->secondProb = ptr2->dProb;
-            temp->meanProb = (0+(temp->secondProb))/2;
+            temp->meanProb = (0 + (temp->secondProb)) / 2;
             ptr2 = ptr2->next;
-        }
-        else{
+        } else {
             temp->token = ptr1->word;
             temp->firstProb = ptr1->dProb;
             temp->secondProb = 0;
-            temp->meanProb = (0+(temp->firstProb))/2;
+            temp->meanProb = (0 + (temp->firstProb)) / 2;
             ptr1 = ptr1->next;
         }
 
-        if(combined == NULL){
+        if (combined == NULL) {
             combined = temp;
-            currLocation= combined;
-        }
-        else{
+            currLocation = combined;
+        } else {
             currLocation->next = temp;
             currLocation = currLocation->next;
         }
-
     }
 
-    if(ptr1 == NULL && ptr2 != NULL){
-        while(ptr2!=NULL){
-            struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
+    if (ptr1 == NULL && ptr2 != NULL) {
+        while (ptr2 != NULL) {
+            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
             temp->token = ptr2->word;
             temp->firstProb = 0;
             temp->secondProb = ptr2->dProb;
-            temp->meanProb = (0+(temp->secondProb))/2;
+            temp->meanProb = (0 + (temp->secondProb)) / 2;
             ptr2 = ptr2->next;
-            if(combined == NULL){
+            if (combined == NULL) {
                 combined = temp;
-                currLocation= combined;
-            }
-            else{
+                currLocation = combined;
+            } else {
                 currLocation->next = temp;
                 currLocation = currLocation->next;
             }
         }
-    }
-    else if (ptr1 != NULL && ptr2 == NULL){
-        while(ptr1!=NULL){
-            struct JSDNode* temp = (struct JSDNode*) malloc(sizeof(struct wordNode));
+    } else if (ptr1 != NULL && ptr2 == NULL) {
+        while (ptr1 != NULL) {
+            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
             temp->token = ptr1->word;
             temp->firstProb = ptr1->dProb;
             temp->secondProb = 0;
-            temp->meanProb = (0+(temp->firstProb))/2;
+            temp->meanProb = (0 + (temp->firstProb)) / 2;
             ptr1 = ptr1->next;
-            if(combined == NULL){
+            if (combined == NULL) {
                 combined = temp;
-                currLocation= combined;
-            }
-            else{
+                currLocation = combined;
+            } else {
                 currLocation->next = temp;
                 currLocation = currLocation->next;
             }
         }
     }
 
-    struct JSDNode* currNode = combined;
+    struct JSDNode *currNode = combined;
 
     double kld1 = 0;
     double kld2 = 0;
     int numTokensCombined = 0;
 
-    while(currNode != NULL){
-        // printf("%s: %lf %lf %lf\n", currNode->token, currNode->firstProb, currNode->secondProb, currNode->meanProb);        
-        if(currNode->firstProb != 0){
-            double x = currNode->firstProb * (log((currNode->firstProb/currNode->meanProb))/log(10));
+    while (currNode != NULL) {
+        // printf("%s: %lf %lf %lf\n", currNode->token, currNode->firstProb, currNode->secondProb, currNode->meanProb);
+        if (currNode->firstProb != 0) {
+            double x = currNode->firstProb * (log((currNode->firstProb / currNode->meanProb)) / log(10));
             kld1 += x;
         }
-        if(currNode->secondProb != 0){
-            double x = currNode->secondProb * (log((currNode->secondProb/currNode->meanProb))/log(10));
+        if (currNode->secondProb != 0) {
+            double x = currNode->secondProb * (log((currNode->secondProb / currNode->meanProb)) / log(10));
             kld2 += x;
         }
         currNode = currNode->next;
         numTokensCombined++;
     }
 
-    struct finalValNode* res = (struct finalValNode*) malloc(sizeof(struct finalValNode));
+    struct finalValNode *res = (struct finalValNode *) malloc(sizeof(struct finalValNode));
     res->firstName = file1->fileName;
     res->secondName = file2->fileName;
-    res->numTokens = numTokensCombined; 
-    res->jsd = (kld1+kld2)/2;
-    res->next=NULL;
-    
+    res->numTokens = numTokensCombined;
+    res->jsd = (kld1 + kld2) / 2;
+    res->next = NULL;
+
     return insertFinalValNode(head, res);
 }
 
 
-struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode){
-    struct finalValNode* currNode = head;
-    struct finalValNode* prevNode = NULL;
+struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode) {
+    struct finalValNode *currNode = head;
+    struct finalValNode *prevNode = NULL;
     int insertNumTokens = insertNode->numTokens;
-    while(currNode != NULL && insertNumTokens >= currNode->numTokens){
+    while (currNode != NULL && insertNumTokens >= currNode->numTokens) {
         prevNode = currNode;
         currNode = currNode->next;
     }
 
-    if(prevNode == NULL){
+    if (prevNode == NULL) {
         insertNode->next = currNode;
         return insertNode;
     }
@@ -572,24 +562,4 @@ struct finalValNode* insertFinalValNode(struct finalValNode *head, struct finalV
     insertNode->next = currNode;
     return head;
 }
-
-struct wordNode* insertToken(struct wordNode *tokens, struct wordNode* iToken){
-    struct wordNode* curr = tokens;
-    struct wordNode* prev = NULL;
-    
-    while(curr != NULL && strcmp(curr->word, iToken->word) <= 0){
-        prev = curr;
-        curr=curr->next;
-    }
-
-    if(prev == NULL){
-        iToken->next = curr;
-        return iToken;
-    }
-    prev->next = iToken;
-    iToken->next=curr;
-    return tokens;
-}
-
-
 
