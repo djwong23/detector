@@ -77,11 +77,12 @@ void *handleFile(void *input) {
     }
 
     pthread_mutex_lock(args->lock);
-    struct fileNode *file = malloc(sizeof(struct fileNode));
+    struct fileNode *file = NULL;
     struct fileNode *head = args->head;
     if (head->wordCount == -1) {
         file = head;
     } else {
+        file = malloc(sizeof(struct fileNode));
         struct fileNode *ptr = head;
         while (ptr->next != NULL) {
             ptr = ptr->next;
@@ -171,16 +172,19 @@ void *handleFile(void *input) {
             }
         }
     }
+    free(buf);
+    buf = NULL;
     close(fileDesc);
     struct wordNode *ptr = file->words;
     while (ptr != NULL) {
         ptr->dProb = ptr->numWords / file->wordCount;
         ptr = ptr->next;
     }
+    free(args->pathName);
+    free(args);
 
 
     //  printf("This is %s\n", args->pathName);
-
     return NULL;
 }
 
@@ -208,9 +212,12 @@ void *handleDirectory(void *input) {
         printf("Directory %s is inaccessible. Returning...\n", dirPath);
         return NULL;
     }
-    pthread_t *pThreads = malloc(sizeof(pthread_t) * 10);//need to track all pthreads for joining
     int numPThreads = 10;
     int currPThread = 0;
+    pthread_t *pThreads = malloc(sizeof(pthread_t) * numPThreads);//need to track all pthreads for joining
+    struct arguments *newArgs = NULL;
+
+
     while (currDir != NULL) {
         errno = 0;
         struct dirent *entry = readdir(currDir);
@@ -225,12 +232,12 @@ void *handleDirectory(void *input) {
             continue;
         }
         if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
-            pthread_t thread;
             if (currPThread == numPThreads) {//dynamically resizing pthread array
                 numPThreads *= 2;
                 pThreads = realloc(pThreads, sizeof(pthread_t) * numPThreads);
             }
-            struct arguments *newArgs = malloc(sizeof(struct arguments));
+            pthread_t thread;
+            newArgs = malloc(sizeof(struct arguments));
             char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
             strcpy(newPathName, args->pathName);
             strcat(newPathName, entry->d_name);
@@ -239,25 +246,35 @@ void *handleDirectory(void *input) {
             strcat(newPathName, "\0");
             newArgs->pathName = malloc(strlen(newPathName) + 1);
             strcpy(newArgs->pathName, newPathName);
+            free(newPathName);
+            newPathName = NULL;
             newArgs->head = args->head;
             newArgs->lock = args->lock;
-            if (entry->d_type == DT_DIR)
-                pthread_create(&thread, NULL, handleDirectory, newArgs);
-            else
-                pthread_create(&thread, NULL, handleFile, newArgs);
             pThreads[currPThread] = thread;
-	    currPThread++;
+            int ret;
+            if (entry->d_type == DT_DIR)
+                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
+            else
+                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+            if (ret != 0) {
+                printf("Error while creating pthread\n");
+            }
+            currPThread++;
+
         }
     }
     closedir(currDir);
 
     for (int i = 0; i < currPThread; i++) {
         int r = pthread_join(pThreads[i], NULL);
-	if (r != 0) {
-		printf("An error has ocurred while joining threads at %s \n", dirPath);
-		return NULL;
-	}
+        if (r != 0) {
+            printf("An error has ocurred while joining threads at %s \n", dirPath);
+            return NULL;
+        }
     }
+    free(pThreads);
+    free(args->pathName);
+    free(args);
     return NULL;
 }
 
@@ -328,20 +345,22 @@ int main(int argc, char **argv) {
     char *directory = malloc(strlen(argv[1]) + 2);
     strcpy(directory, argv[1]);
     strcat(directory, "/\0");//adding / to end of directory ensures it will be read
-    if (opendir(directory) == NULL) {
+    DIR *dirStream = opendir(directory);
+    if (dirStream == NULL) {
         printf("Initial directory is inaccessible. Terminating. \n");
         return EXIT_FAILURE;
     }
 
     struct fileNode *head = malloc(sizeof(struct fileNode));
     head->wordCount = -1;
-    pthread_mutex_t lock;
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     struct arguments *args = malloc(sizeof(struct arguments));
     args->pathName = malloc(strlen(directory) + 1);
     strcpy(args->pathName, directory);
     args->head = head;
     args->lock = &lock;
     handleDirectory(args);
+
 
     // struct fileNode *ptr = args->head;
     // while (ptr != NULL) {
@@ -383,6 +402,15 @@ int main(int argc, char **argv) {
             printf("%s %s\n", ptr1->fileName, ptr2->fileName);
             finalValHead = jsd(ptr1, ptr2, finalValHead);
             ptr2 = ptr2->next;
+
+    struct fileNode *ptr = head;
+    while (ptr != NULL) {
+        printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
+        struct wordNode *wordPtr = ptr->words;
+        while (wordPtr != NULL) {
+            printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
+            wordPtr = wordPtr->next;
+
         }
         ptr1=ptr1->next;
     }
@@ -397,6 +425,29 @@ int main(int argc, char **argv) {
         res=res->next;
     }
 
+    ptr = head;
+    struct fileNode *prevFilePtr = NULL;
+    while (ptr != NULL) {
+        struct wordNode *wordPtr = ptr->words;
+        struct wordNode *prevPtr = NULL;
+        while (wordPtr != NULL) {
+            prevPtr = wordPtr;
+            wordPtr = wordPtr->next;
+            free(prevPtr->word);
+            prevPtr->word = NULL;
+            free(prevPtr);
+            prevPtr = NULL;
+        }
+        prevFilePtr = ptr;
+        ptr = ptr->next;
+        free(prevFilePtr->fileName);
+        prevFilePtr->fileName = NULL;
+        free(prevFilePtr);
+        prevFilePtr = NULL;
+    }
+
+    free(directory);
+    closedir(dirStream);
     return 0;
 }
 
@@ -553,4 +604,3 @@ struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalV
     insertNode->next = currNode;
     return head;
 }
-
