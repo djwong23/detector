@@ -260,7 +260,6 @@ void *handleDirectory(void *input) {
                 printf("Error while creating pthread\n");
             }
             currPThread++;
-
         }
     }
     closedir(currDir);
@@ -311,14 +310,14 @@ struct wordNode *insertToken(struct wordNode *tokens, struct wordNode *iToken);
 struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
 struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct finalValNode *head);
 
-struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode* insert){
-    struct fileNode* temp = (struct fileNode*) malloc(sizeof(struct fileNode));
-    temp->fileName= insert->fileName;
+struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode *insert) {
+    struct fileNode *temp = (struct fileNode *) malloc(sizeof(struct fileNode));
+    temp->fileName = insert->fileName;
     temp->wordCount = insert->wordCount;
     temp->words = insert->words;
     temp->next = NULL;
 
-    if(head == NULL){
+    if (head == NULL) {
         return temp;
     }
 
@@ -326,16 +325,16 @@ struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode* ins
     struct fileNode *currPtr = head;
     double insertNumTokens = insert->wordCount;
 
-    while(currPtr != NULL && insertNumTokens >= currPtr->wordCount){
-        prevPtr = currPtr; 
+    while (currPtr != NULL && insertNumTokens >= currPtr->wordCount) {
+        prevPtr = currPtr;
         currPtr = currPtr->next;
     }
-    if(prevPtr == NULL){
-        temp->next=currPtr;
+    if (prevPtr == NULL) {
+        temp->next = currPtr;
         return temp;
     }
-    prevPtr->next=temp;
-    temp->next=currPtr;
+    prevPtr->next = temp;
+    temp->next = currPtr;
     return head;
 }
 
@@ -375,14 +374,14 @@ int main(int argc, char **argv) {
     // }
     // printf("NULL\n");
 
-    struct fileNode* sortedFiles = NULL;
-    struct fileNode* sortingPtr = args->head;
-    while(sortingPtr != NULL){
+    struct fileNode *sortedFiles = NULL;
+    struct fileNode *sortingPtr = head;
+    while (sortingPtr != NULL) {
         sortedFiles = sortSharedStructure(sortedFiles, sortingPtr);
         sortingPtr = sortingPtr->next;
     }
-        // printf("%s %lf\n", sortedFiles->fileName, sortedFiles->wordCount);
-        // printf("%s %lf\n", sortedFiles->next->fileName, sortedFiles->next->wordCount);
+    // printf("%s %lf\n", sortedFiles->fileName, sortedFiles->wordCount);
+    // printf("%s %lf\n", sortedFiles->next->fileName, sortedFiles->next->wordCount);
 
     // struct fileNode* t = sortedFiles;
     // while(t != NULL){
@@ -391,17 +390,19 @@ int main(int argc, char **argv) {
     // }
 
 
-    struct finalValNode* finalValHead = NULL;
+    struct finalValNode *finalValHead = NULL;
 
-    struct fileNode* ptr1 = sortedFiles;
-    struct fileNode* ptr2;
+    struct fileNode *ptr1 = sortedFiles;
+    struct fileNode *ptr2;
 
-    while(ptr1!=NULL){
+    while (ptr1 != NULL) {
         ptr2 = ptr1->next;
-        while(ptr2!=NULL){
+        while (ptr2 != NULL) {
             printf("%s %s\n", ptr1->fileName, ptr2->fileName);
             finalValHead = jsd(ptr1, ptr2, finalValHead);
             ptr2 = ptr2->next;
+        }
+    }
 
     struct fileNode *ptr = head;
     while (ptr != NULL) {
@@ -410,19 +411,18 @@ int main(int argc, char **argv) {
         while (wordPtr != NULL) {
             printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
             wordPtr = wordPtr->next;
-
         }
-        ptr1=ptr1->next;
+        ptr1 = ptr1->next;
     }
 
-    struct finalValNode* res = finalValHead;
+    struct finalValNode *res = finalValHead;
 
-    while(res != NULL){
+    while (res != NULL) {
         // printf("%s %s %lf\n", res->firstName, res->secondName, res->jsd);
         printJSD(res->jsd);
         printf("%s %s\n", res->firstName, res->secondName);
-        
-        res=res->next;
+
+        res = res->next;
     }
 
     ptr = head;
@@ -451,26 +451,22 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void printJSD(double j){
+void printJSD(double j) {
     /*red for [0, 0.1]
 yellow for (0.1, 0.15]
 green for (0.15, 0.2]
 cyan for (0.2, 0.25]
 blue for (0.25, 0.3]
 and white for any greater than 0.3.*/
-    if(j >= 0 && j <= 0.1){
+    if (j >= 0 && j <= 0.1) {
         printf("\033[1;31m");
-    }
-    else if(j > 0.1 && j <= 0.15){
+    } else if (j > 0.1 && j <= 0.15) {
         printf("\033[1;33m");
-    }
-    else if(j > 0.15 && j <= 0.2){
+    } else if (j > 0.15 && j <= 0.2) {
         printf("\033[0;32m");
-    }
-    else if(j > 0.2 && j <= 0.25){
+    } else if (j > 0.2 && j <= 0.25) {
         printf("\033[0;36m");
-    }
-    else if(j > 0.25 && j <= 0.3){
+    } else if (j > 0.25 && j <= 0.3) {
         printf("\033[0;34m");
     }
     printf("%lf ", j);
