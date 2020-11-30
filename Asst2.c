@@ -158,6 +158,14 @@ int main(int argc, char **argv) {
         free(prevFilePtr);
         prevFilePtr = NULL;
     }
+    ptr = sortedFiles;
+    prevFilePtr = NULL;
+    while (ptr != NULL) {
+        prevFilePtr = ptr;
+        ptr = ptr->next;
+        free(prevFilePtr);
+    }
+
     struct finalValNode* freeFinalPtr = finalValHead;
     struct finalValNode *prevValPtr = NULL;
     while (freeFinalPtr != NULL) {
@@ -336,6 +344,8 @@ void *handleFile(void *input) {
     int fileDesc = open(args->pathName, O_RDONLY);
     if (fileDesc == -1) {
         printf("File %s is inaccessible. Returning...\n", args->pathName);
+        free(args->pathName);
+        free(args);
         return NULL;
     }
 
@@ -361,6 +371,12 @@ void *handleFile(void *input) {
 
     int fileSize = lseek(fileDesc, 0, SEEK_END);
     lseek(fileDesc, 0, SEEK_SET);
+    if (fileSize == 0) {
+        printf("Empty file \n");
+        free(args->pathName);
+        free(args);
+        return NULL;
+    }
     int maxBufSize = 20;
     char *buf = malloc(maxBufSize);
     //strcpy(buf, "\0");
@@ -457,6 +473,8 @@ void *handleDirectory(void *input) {
     DIR *currDir = opendir(dirPath);
     if (currDir == NULL) {
         printf("Directory %s is inaccessible. Returning...\n", dirPath);
+        free(args->pathName);
+        free(args);
         return NULL;
     }
     int numPThreads = 10;
