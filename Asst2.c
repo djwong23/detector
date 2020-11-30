@@ -77,11 +77,12 @@ void *handleFile(void *input) {
     }
 
     pthread_mutex_lock(args->lock);
-    struct fileNode *file = malloc(sizeof(struct fileNode));
+    struct fileNode *file = NULL;
     struct fileNode *head = args->head;
     if (head->wordCount == -1) {
         file = head;
     } else {
+        file = malloc(sizeof(struct fileNode));
         struct fileNode *ptr = head;
         while (ptr->next != NULL) {
             ptr = ptr->next;
@@ -179,6 +180,8 @@ void *handleFile(void *input) {
         ptr->dProb = ptr->numWords / file->wordCount;
         ptr = ptr->next;
     }
+    free(args->pathName);
+    free(args);
 
 
     //  printf("This is %s\n", args->pathName);
@@ -270,6 +273,8 @@ void *handleDirectory(void *input) {
         }
     }
     free(pThreads);
+    free(args->pathName);
+    free(args);
     return NULL;
 }
 
@@ -441,7 +446,7 @@ int main(int argc, char **argv) {
     //    }
 
 
-    struct fileNode *ptr = args->head;
+    struct fileNode *ptr = head;
     while (ptr != NULL) {
         printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
         struct wordNode *wordPtr = ptr->words;
@@ -454,7 +459,7 @@ int main(int argc, char **argv) {
     }
     printf("NULL\n");
 
-    ptr = args->head;
+    ptr = head;
     struct fileNode *prevFilePtr = NULL;
     while (ptr != NULL) {
         struct wordNode *wordPtr = ptr->words;
@@ -463,15 +468,18 @@ int main(int argc, char **argv) {
             prevPtr = wordPtr;
             wordPtr = wordPtr->next;
             free(prevPtr->word);
+            prevPtr->word = NULL;
             free(prevPtr);
+            prevPtr = NULL;
         }
         prevFilePtr = ptr;
         ptr = ptr->next;
         free(prevFilePtr->fileName);
+        prevFilePtr->fileName = NULL;
         free(prevFilePtr);
+        prevFilePtr = NULL;
     }
-    free(args->pathName);
-    free(args);
+
     free(directory);
     closedir(dirStream);
     return 0;
