@@ -371,12 +371,7 @@ void *handleFile(void *input) {
 
     int fileSize = lseek(fileDesc, 0, SEEK_END);
     lseek(fileDesc, 0, SEEK_SET);
-    if (fileSize == 0) {
-        printf("Empty file \n");
-        free(args->pathName);
-        free(args);
-        return NULL;
-    }
+
     int maxBufSize = 20;
     char *buf = malloc(maxBufSize);
     //strcpy(buf, "\0");
