@@ -213,7 +213,6 @@ void *handleDirectory(void *input) {
     int currPThread = 0;
     pthread_t *pThreads = malloc(sizeof(pthread_t) * numPThreads);//need to track all pthreads for joining
     struct arguments *newArgs = NULL;
-    pthread_t thread;
 
 
     while (currDir != NULL) {
@@ -234,6 +233,7 @@ void *handleDirectory(void *input) {
                 numPThreads *= 2;
                 pThreads = realloc(pThreads, sizeof(pthread_t) * numPThreads);
             }
+            pthread_t thread;
             newArgs = malloc(sizeof(struct arguments));
             char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
             strcpy(newPathName, args->pathName);
@@ -248,10 +248,14 @@ void *handleDirectory(void *input) {
             newArgs->head = args->head;
             newArgs->lock = args->lock;
             pThreads[currPThread] = thread;
+            int ret;
             if (entry->d_type == DT_DIR)
-                pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
+                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
             else
-                pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+            if (ret != 0) {
+                printf("Error while creating pthread\n");
+            }
             currPThread++;
 
         }
@@ -314,7 +318,7 @@ int main(int argc, char **argv) {
 
     struct fileNode *head = malloc(sizeof(struct fileNode));
     head->wordCount = -1;
-    pthread_mutex_t lock;
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     struct arguments *args = malloc(sizeof(struct arguments));
     args->pathName = malloc(strlen(directory) + 1);
     strcpy(args->pathName, directory);
