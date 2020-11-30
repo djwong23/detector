@@ -1,0 +1,32 @@
+1. Initial directory is invalid.
+
+If the directory passed in via the arguments is inaccessible, the program will print an error and immediately terminate as there is nothing to analyze.
+
+2.Empty file
+
+If an empty file is scanned, we should expect to avoid a divide-by-zero error, even if its word count is 0.
+
+3. Directory containing invalid files
+
+If the program encounters an invalid file while scanning a directory, it should continue scanning and not let the invalid file interfere with the program. The invalid file will not be added to the shared data structure nor cause a memory leak.
+
+4. Subdirectories
+
+We test whether the file appropriately handles subdirectories and scans every file/directory within the input. In a sample directory like this:
+
+test
+	File1.txt
+	File2.txt
+	Folder1
+		File3.txt
+		File4.txt
+	File5.txt
+
+All 5 files should be tokenized correctly and analyzed in pairs with every other file. Subdirectories and multiple files also force the program to utilize multithreading, but because of our implementation of mutexes, this shouldn’t cause any issues with operations on the data structure.
+
+
+
+5. 2 Files with a few common words
+
+The program should scan files appropriately and analyze them correctly. When presented with two valid files with a few common words, the analysis aspect of the program should combine the files’ common words into a list. Then it should result in the correct JSD value that will then be printed in color corresponding with the plagiarism severity.
+
