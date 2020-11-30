@@ -47,297 +47,12 @@ struct arguments {
     void *lock;
 };
 
-
-//function for tokenizing - file handling
-//  check file OK and accessible
-//  create wordNode wordHead of LL
-//  int totalWords = 0
-//  for each character from 0 to lseek (seekend)
-//      if(isAlpha) || '-'
-//          add to token string
-//      if ' ' or '\n'
-//          check if token string is already in LL
-//              if yes, increment count
-//              else add new wordNode
-//          totalWords++
-//  close file
-//  for LL
-//      calculate dProb
-//  create filNode for file, add LL to its data
-//  lock mutex
-//      push fileNode to shared DS by number of words
-//  unlock mutex
-void *handleFile(void *input) {
-    struct arguments *args = (struct arguments *) input;
-    printf("%s has been accessed\n", args->pathName);
-    int fileDesc = open(args->pathName, O_RDONLY);
-    if (fileDesc == -1) {
-        printf("File %s is inaccessible. Returning...\n", args->pathName);
-        return NULL;
-    }
-
-    pthread_mutex_lock(args->lock);
-    struct fileNode *file = NULL;
-    struct fileNode *head = args->head;
-    if (head->wordCount == -1) {
-        file = head;
-    } else {
-        file = malloc(sizeof(struct fileNode));
-        struct fileNode *ptr = head;
-        while (ptr->next != NULL) {
-            ptr = ptr->next;
-        }
-        ptr->next = file;
-    }
-    file->fileName = malloc((strlen(args->pathName)) + 1);
-    strcpy(file->fileName, args->pathName);
-    file->next = NULL;
-    file->wordCount = 0;
-    file->words = NULL;
-    pthread_mutex_unlock(args->lock);
-
-    int fileSize = lseek(fileDesc, 0, SEEK_END);
-    lseek(fileDesc, 0, SEEK_SET);
-    int maxBufSize = 20;
-    char *buf = malloc(maxBufSize);
-    //strcpy(buf, "\0");
-    int curBufPosition = 0;
-    char c = '\0';
-
-
-    for (int i = 0; i < (int) (sizeof(char) * fileSize); i++) {
-        read(fileDesc, &c, sizeof(char));
-        if (isalpha(c) || c == '-') {
-            c = tolower(c);
-            memcpy(&buf[curBufPosition], &c, 1);
-            curBufPosition++;
-            if (curBufPosition == maxBufSize) {
-                maxBufSize *= 2;
-                buf = realloc(buf, maxBufSize);
-            }
-            if (i < (int) (sizeof(char) * fileSize) - 1) {
-                continue;
-            }
-        }
-        if (isspace(c) || i == sizeof(char) * fileSize - 1) {
-            file->wordCount += 1;
-            if (curBufPosition > 0) {
-                buf[curBufPosition] = '\0';
-                if (file->words == NULL) {
-                    file->words = malloc(sizeof(struct wordNode));
-                    file->words->word = malloc(strlen(buf) + 1);
-                    strcpy(file->words->word, buf);
-                    file->words->numWords = 1;
-                    file->words->next = NULL;
-                    file->words->dProb = 0;
-                } else {
-                    struct wordNode *ptr = file->words;
-                    int found = 0;
-                    while (ptr != NULL) {
-                        if (strcmp(ptr->word, buf) == 0) {
-                            found = 1;
-                            ptr->numWords += 1;
-                            break;
-                        }
-                        ptr = ptr->next;
-                    }
-                    if (!found) {
-                        struct wordNode *newWord = malloc(sizeof(struct wordNode));
-                        newWord->numWords = 1;
-                        newWord->word = malloc(strlen(buf) + 1);
-                        strcpy(newWord->word, buf);
-                        newWord->dProb = 0;
-                        newWord->next = NULL;
-                        struct wordNode *curr = file->words;
-                        struct wordNode *prev = NULL;
-
-                        while (curr != NULL && strcmp(curr->word, newWord->word) <= 0) {
-                            prev = curr;
-                            curr = curr->next;
-                        }
-
-                        if (prev == NULL) {
-                            newWord->next = curr;
-                            file->words = newWord;
-                        } else {
-                            prev->next = newWord;
-                            newWord->next = curr;
-                        }
-                    }
-                }
-                free(buf);
-                buf = NULL;
-                curBufPosition = 0;
-                buf = malloc(maxBufSize);
-            }
-        }
-    }
-    free(buf);
-    buf = NULL;
-    close(fileDesc);
-    struct wordNode *ptr = file->words;
-    while (ptr != NULL) {
-        ptr->dProb = ptr->numWords / file->wordCount;
-        ptr = ptr->next;
-    }
-    free(args->pathName);
-    free(args);
-
-
-    //  printf("This is %s\n", args->pathName);
-    return NULL;
-}
-
-//function for directories
-//  accepts directory path, pointer to shared data structure, mutex
-//  check if directory is valid
-//  iterate through directory, count number of items
-//  malloc pthread array
-//  for each item in directory
-//      if item is a file
-//          pthread create fileHandling function
-//      if item is a directory
-//          pthread create directories function
-//          add pthread to array
-//  for each pthread in array
-//      pthread_join
-//  close directory
-//directories doesn't directly use mutex bc it doesn't write to anything
-//just passes it to filehandler
-void *handleDirectory(void *input) {
-    struct arguments *args = (struct arguments *) input;
-    char *dirPath = args->pathName;
-    DIR *currDir = opendir(dirPath);
-    if (currDir == NULL) {
-        printf("Directory %s is inaccessible. Returning...\n", dirPath);
-        return NULL;
-    }
-    int numPThreads = 10;
-    int currPThread = 0;
-    pthread_t *pThreads = malloc(sizeof(pthread_t) * numPThreads);//need to track all pthreads for joining
-    struct arguments *newArgs = NULL;
-
-
-    while (currDir != NULL) {
-        errno = 0;
-        struct dirent *entry = readdir(currDir);
-        if (entry == NULL && errno == -1) {//file that can't be accessed will not terminate program
-            printf("Directory entry is inaccessible. Continuing...\n");
-            continue;
-        }
-        if (entry == NULL) {
-            break;
-        }
-        if (entry->d_type == DT_DIR && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
-            continue;
-        }
-        if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
-            if (currPThread == numPThreads) {//dynamically resizing pthread array
-                numPThreads *= 2;
-                pThreads = realloc(pThreads, sizeof(pthread_t) * numPThreads);
-            }
-            pthread_t thread;
-            newArgs = malloc(sizeof(struct arguments));
-            char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
-            strcpy(newPathName, args->pathName);
-            strcat(newPathName, entry->d_name);
-            if (entry->d_type == DT_DIR)
-                strcat(newPathName, "/");
-            strcat(newPathName, "\0");
-            newArgs->pathName = malloc(strlen(newPathName) + 1);
-            strcpy(newArgs->pathName, newPathName);
-            free(newPathName);
-            newPathName = NULL;
-            newArgs->head = args->head;
-            newArgs->lock = args->lock;
-            pThreads[currPThread] = thread;
-            int ret;
-            if (entry->d_type == DT_DIR)
-                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
-            else
-                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
-            if (ret != 0) {
-                printf("Error while creating pthread\n");
-            }
-            currPThread++;
-        }
-    }
-    closedir(currDir);
-
-    for (int i = 0; i < currPThread; i++) {
-        int r = pthread_join(pThreads[i], NULL);
-        if (r != 0) {
-            printf("An error has ocurred while joining threads at %s \n", dirPath);
-            return NULL;
-        }
-    }
-    free(pThreads);
-    free(args->pathName);
-    free(args);
-    return NULL;
-}
-
-
-//ARCHI'S TO DO LIST
-
-//an insertion function to insert words in appropriate location alphabetically in linked list
-
-//jsd function
-
-
-//analysis
-//  do a nested loop to compare two files at a time
-//  getMergedTokens - JSD
-//  comp
-
-//accepts pointers two file nodes for comparison, pointer to finalValNode LL, pointer to shared data structure
-
-//jensen shannon distance function
-//  create two pointers for tokens in the two files we're comparing:
-//      if the two pointers point to same token, add their name and meanprobs to the JSDNode linked list and advance their pointers
-//      else if they do not point to the same token, add the token that is alphabetically first to the JSDNode linked list, setting one of the discrete probabilities to 0, the other to the discrete probability of the file that contains it, and the mean probability to the mean. Advance only that token
-//      continue until both pointers are NULL
-//  create running sum for each file
-//  for every node in JSDNodes:
-//      add file's discrete prob * log (discrete prob/mean prob) to the respective file's running sum
-//          when token is not in file this should evaluate to 0 because its discrete prob will be 0
-//  compute mean of the running sums to get the JSD of the two files
-//  create a finalValNode with the names of the two files, their JSD, and the total number of tokens for the files
-//  insert node into linked list of finalValNodes sorted based on tokens
-
-
+void *handleFile(void *input);
+void *handleDirectory(void *input);
 struct wordNode *insertToken(struct wordNode *tokens, struct wordNode *iToken);
 struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalValNode *insertNode);
 struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct finalValNode *head);
-
-struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode *insert) {
-    struct fileNode *temp = (struct fileNode *) malloc(sizeof(struct fileNode));
-    temp->fileName = insert->fileName;
-    temp->wordCount = insert->wordCount;
-    temp->words = insert->words;
-    temp->next = NULL;
-
-    if (head == NULL) {
-        return temp;
-    }
-
-    struct fileNode *prevPtr = NULL;
-    struct fileNode *currPtr = head;
-    double insertNumTokens = insert->wordCount;
-
-    while (currPtr != NULL && insertNumTokens >= currPtr->wordCount) {
-        prevPtr = currPtr;
-        currPtr = currPtr->next;
-    }
-    if (prevPtr == NULL) {
-        temp->next = currPtr;
-        return temp;
-    }
-    prevPtr->next = temp;
-    temp->next = currPtr;
-    return head;
-}
-
+struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode *insert);
 void printJSD(double j);
 
 int main(int argc, char **argv) {
@@ -361,18 +76,18 @@ int main(int argc, char **argv) {
     handleDirectory(args);
 
 
-    struct fileNode *ptr = args->head;
-    while (ptr != NULL) {
-        printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
-        struct wordNode *wordPtr = ptr->words;
-        while (wordPtr != NULL) {
-            printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
-            wordPtr = wordPtr->next;
-        }
-        printf("NULL\n|\n|\n");
-        ptr = ptr->next;
-    }
-    printf("NULL\n");
+    // struct fileNode *ptr = args->head;
+    // while (ptr != NULL) {
+    //     printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
+    //     struct wordNode *wordPtr = ptr->words;
+    //     while (wordPtr != NULL) {
+    //         printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
+    //         wordPtr = wordPtr->next;
+    //     }
+    //     printf("NULL\n|\n|\n");
+    //     ptr = ptr->next;
+    // }
+    // printf("NULL\n");
 
     struct fileNode *sortedFiles = NULL;
     struct fileNode *sortingPtr = args->head;
@@ -402,28 +117,15 @@ int main(int argc, char **argv) {
         ptr1=ptr1->next;
     }
 
-    // struct fileNode *ptr = head;
-    // while (ptr != NULL) {
-    //     printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
-    //     struct wordNode *wordPtr = ptr->words;
-    //     while (wordPtr != NULL) {
-    //         printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
-    //         wordPtr = wordPtr->next;
-    //     }
-    //     ptr1 = ptr1->next;
-    // }
-
     struct finalValNode *res = finalValHead;
 
     while (res != NULL) {
-        // printf("%s %s %lf\n", res->firstName, res->secondName, res->jsd);
         printJSD(res->jsd);
         printf("\"%s\" \"%s\"\n", res->firstName, res->secondName);
-
         res = res->next;
     }
 
-    ptr = head;
+    struct fileNode* ptr = head;
     struct fileNode *prevFilePtr = NULL;
     while (ptr != NULL) {
         struct wordNode *wordPtr = ptr->words;
@@ -556,7 +258,6 @@ struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct 
     int numTokensCombined = 0;
 
     while (currNode != NULL) {
-        // printf("%s: %lf %lf %lf\n", currNode->token, currNode->firstProb, currNode->secondProb, currNode->meanProb);
         if (currNode->firstProb != 0) {
             double x = currNode->firstProb * (log((currNode->firstProb / currNode->meanProb)) / log(10));
             kld1 += x;
@@ -569,13 +270,22 @@ struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct 
         numTokensCombined++;
     }
 
+    struct JSDNode *freePtr = combined;
+    struct JSDNode *nextFreePtr = combined;
+    while(freePtr != NULL){
+        nextFreePtr=freePtr->next;
+        free(freePtr);
+        freePtr = nextFreePtr;
+    }
+
+
     struct finalValNode *res = (struct finalValNode *) malloc(sizeof(struct finalValNode));
     res->firstName = file1->fileName;
     res->secondName = file2->fileName;
     res->numTokens = numTokensCombined;
     res->jsd = (kld1 + kld2) / 2;
     res->next = NULL;
-
+    
     return insertFinalValNode(head, res);
 }
 
@@ -598,3 +308,227 @@ struct finalValNode *insertFinalValNode(struct finalValNode *head, struct finalV
     insertNode->next = currNode;
     return head;
 }
+
+
+void *handleFile(void *input) {
+    struct arguments *args = (struct arguments *) input;
+    printf("%s has been accessed\n", args->pathName);
+    int fileDesc = open(args->pathName, O_RDONLY);
+    if (fileDesc == -1) {
+        printf("File %s is inaccessible. Returning...\n", args->pathName);
+        return NULL;
+    }
+
+    pthread_mutex_lock(args->lock);
+    struct fileNode *file = NULL;
+    struct fileNode *head = args->head;
+    if (head->wordCount == -1) {
+        file = head;
+    } else {
+        file = malloc(sizeof(struct fileNode));
+        struct fileNode *ptr = head;
+        while (ptr->next != NULL) {
+            ptr = ptr->next;
+        }
+        ptr->next = file;
+    }
+    file->fileName = malloc((strlen(args->pathName)) + 1);
+    strcpy(file->fileName, args->pathName);
+    file->next = NULL;
+    file->wordCount = 0;
+    file->words = NULL;
+    pthread_mutex_unlock(args->lock);
+
+    int fileSize = lseek(fileDesc, 0, SEEK_END);
+    lseek(fileDesc, 0, SEEK_SET);
+    int maxBufSize = 20;
+    char *buf = malloc(maxBufSize);
+    //strcpy(buf, "\0");
+    int curBufPosition = 0;
+    char c = '\0';
+
+
+    for (int i = 0; i < (int) (sizeof(char) * fileSize); i++) {
+        read(fileDesc, &c, sizeof(char));
+        if (isalpha(c) || c == '-') {
+            c = tolower(c);
+            memcpy(&buf[curBufPosition], &c, 1);
+            curBufPosition++;
+            if (curBufPosition == maxBufSize) {
+                maxBufSize *= 2;
+                buf = realloc(buf, maxBufSize);
+            }
+            if (i < (int) (sizeof(char) * fileSize) - 1) {
+                continue;
+            }
+        }
+        if (isspace(c) || i == sizeof(char) * fileSize - 1) {
+            file->wordCount += 1;
+            if (curBufPosition > 0) {
+                buf[curBufPosition] = '\0';
+                if (file->words == NULL) {
+                    file->words = malloc(sizeof(struct wordNode));
+                    file->words->word = malloc(strlen(buf) + 1);
+                    strcpy(file->words->word, buf);
+                    file->words->numWords = 1;
+                    file->words->next = NULL;
+                    file->words->dProb = 0;
+                } else {
+                    struct wordNode *ptr = file->words;
+                    int found = 0;
+                    while (ptr != NULL) {
+                        if (strcmp(ptr->word, buf) == 0) {
+                            found = 1;
+                            ptr->numWords += 1;
+                            break;
+                        }
+                        ptr = ptr->next;
+                    }
+                    if (!found) {
+                        struct wordNode *newWord = malloc(sizeof(struct wordNode));
+                        newWord->numWords = 1;
+                        newWord->word = malloc(strlen(buf) + 1);
+                        strcpy(newWord->word, buf);
+                        newWord->dProb = 0;
+                        newWord->next = NULL;
+                        struct wordNode *curr = file->words;
+                        struct wordNode *prev = NULL;
+
+                        while (curr != NULL && strcmp(curr->word, newWord->word) <= 0) {
+                            prev = curr;
+                            curr = curr->next;
+                        }
+
+                        if (prev == NULL) {
+                            newWord->next = curr;
+                            file->words = newWord;
+                        } else {
+                            prev->next = newWord;
+                            newWord->next = curr;
+                        }
+                    }
+                }
+                free(buf);
+                buf = NULL;
+                curBufPosition = 0;
+                buf = malloc(maxBufSize);
+            }
+        }
+    }
+    free(buf);
+    buf = NULL;
+    close(fileDesc);
+    struct wordNode *ptr = file->words;
+    while (ptr != NULL) {
+        ptr->dProb = ptr->numWords / file->wordCount;
+        ptr = ptr->next;
+    }
+    free(args->pathName);
+    free(args);
+
+
+    //  printf("This is %s\n", args->pathName);
+    return NULL;
+}
+
+void *handleDirectory(void *input) {
+    struct arguments *args = (struct arguments *) input;
+    char *dirPath = args->pathName;
+    DIR *currDir = opendir(dirPath);
+    if (currDir == NULL) {
+        printf("Directory %s is inaccessible. Returning...\n", dirPath);
+        return NULL;
+    }
+    int numPThreads = 10;
+    int currPThread = 0;
+    pthread_t *pThreads = malloc(sizeof(pthread_t) * numPThreads);//need to track all pthreads for joining
+    struct arguments *newArgs = NULL;
+
+
+    while (currDir != NULL) {
+        errno = 0;
+        struct dirent *entry = readdir(currDir);
+        if (entry == NULL && errno == -1) {//file that can't be accessed will not terminate program
+            printf("Directory entry is inaccessible. Continuing...\n");
+            continue;
+        }
+        if (entry == NULL) {
+            break;
+        }
+        if (entry->d_type == DT_DIR && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+        if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
+            if (currPThread == numPThreads) {//dynamically resizing pthread array
+                numPThreads *= 2;
+                pThreads = realloc(pThreads, sizeof(pthread_t) * numPThreads);
+            }
+            pthread_t thread;
+            newArgs = malloc(sizeof(struct arguments));
+            char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
+            strcpy(newPathName, args->pathName);
+            strcat(newPathName, entry->d_name);
+            if (entry->d_type == DT_DIR)
+                strcat(newPathName, "/");
+            strcat(newPathName, "\0");
+            newArgs->pathName = malloc(strlen(newPathName) + 1);
+            strcpy(newArgs->pathName, newPathName);
+            free(newPathName);
+            newPathName = NULL;
+            newArgs->head = args->head;
+            newArgs->lock = args->lock;
+            pThreads[currPThread] = thread;
+            int ret;
+            if (entry->d_type == DT_DIR)
+                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
+            else
+                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+            if (ret != 0) {
+                printf("Error while creating pthread\n");
+            }
+            currPThread++;
+        }
+    }
+    closedir(currDir);
+
+    for (int i = 0; i < currPThread; i++) {
+        int r = pthread_join(pThreads[i], NULL);
+        if (r != 0) {
+            printf("An error has ocurred while joining threads at %s \n", dirPath);
+            return NULL;
+        }
+    }
+    free(pThreads);
+    free(args->pathName);
+    free(args);
+    return NULL;
+}
+
+struct fileNode *sortSharedStructure(struct fileNode *head, struct fileNode *insert) {
+    struct fileNode *temp = (struct fileNode *) malloc(sizeof(struct fileNode));
+    temp->fileName = insert->fileName;
+    temp->wordCount = insert->wordCount;
+    temp->words = insert->words;
+    temp->next = NULL;
+
+    if (head == NULL) {
+        return temp;
+    }
+
+    struct fileNode *prevPtr = NULL;
+    struct fileNode *currPtr = head;
+    double insertNumTokens = insert->wordCount;
+
+    while (currPtr != NULL && insertNumTokens >= currPtr->wordCount) {
+        prevPtr = currPtr;
+        currPtr = currPtr->next;
+    }
+    if (prevPtr == NULL) {
+        temp->next = currPtr;
+        return temp;
+    }
+    prevPtr->next = temp;
+    temp->next = currPtr;
+    return head;
+}
+
