@@ -497,15 +497,15 @@ void *handleDirectory(void *input) {
             newPathName = NULL;
             newArgs->head = args->head;
             newArgs->lock = args->lock;
-            pThreads[currPThread] = thread;
             int ret;
             if (entry->d_type == DT_DIR)
-                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
+                ret = pthread_create(&thread, NULL, handleDirectory, newArgs);
             else
-                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+                ret = pthread_create(&thread, NULL, handleFile, newArgs);
             if (ret != 0) {
                 printf("Error while creating pthread\n");
             }
+            pThreads[currPThread] = thread;
             currPThread++;
         }
     }
