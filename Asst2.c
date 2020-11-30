@@ -158,11 +158,11 @@ int main(int argc, char **argv) {
         free(prevFilePtr);
         prevFilePtr = NULL;
     }
-    ptr = finalValHead;
+    struct finalValNode* freeFinalPtr = finalValHead;
     struct finalValNode *prevValPtr = NULL;
-    while (ptr != NULL) {
-        prevValPtr = ptr;
-        ptr = ptr->next;
+    while (freeFinalPtr != NULL) {
+        prevValPtr = freeFinalPtr;
+        freeFinalPtr = freeFinalPtr->next;
         free(prevValPtr);
         prevValPtr = NULL;
     }
