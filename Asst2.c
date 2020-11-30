@@ -213,6 +213,7 @@ void *handleDirectory(void *input) {
     int currPThread = 0;
     pthread_t **pThreads = malloc(sizeof(pthread_t *) * numPThreads);//need to track all pthreads for joining
     struct arguments *newArgs = NULL;
+    pthread_t thread = NULL;
     while (currDir != NULL) {
         errno = 0;
         struct dirent *entry = readdir(currDir);
@@ -227,7 +228,6 @@ void *handleDirectory(void *input) {
             continue;
         }
         if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
-            pthread_t thread;
             if (currPThread == numPThreads) {//dynamically resizing pthread array
                 numPThreads *= 2;
                 pThreads = realloc(pThreads, sizeof(pthread_t *) * numPThreads);
