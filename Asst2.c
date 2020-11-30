@@ -145,7 +145,14 @@ int main(int argc, char **argv) {
         free(prevFilePtr);
         prevFilePtr = NULL;
     }
-
+    ptr = finalValHead;
+    struct finalValNode *prevValPtr = NULL;
+    while (ptr != NULL) {
+        prevValPtr = ptr;
+        ptr = ptr->next;
+        free(prevValPtr);
+        prevValPtr = NULL;
+    }
     free(directory);
     closedir(dirStream);
     return 0;
