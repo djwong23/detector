@@ -211,7 +211,7 @@ void *handleDirectory(void *input) {
     }
     int numPThreads = 10;
     int currPThread = 0;
-    pthread_t *pThreads = malloc(sizeof(pthread_t) * numPThreads);//need to track all pthreads for joining
+    pthread_t **pThreads = malloc(sizeof(pthread_t *) * numPThreads);//need to track all pthreads for joining
     struct arguments *newArgs = NULL;
     while (currDir != NULL) {
         errno = 0;
@@ -230,7 +230,7 @@ void *handleDirectory(void *input) {
             pthread_t thread;
             if (currPThread == numPThreads) {//dynamically resizing pthread array
                 numPThreads *= 2;
-                pThreads = realloc(pThreads, sizeof(pthread_t) * numPThreads);
+                pThreads = realloc(pThreads, sizeof(pthread_t *) * numPThreads);
             }
             newArgs = malloc(sizeof(struct arguments));
             char *newPathName = malloc(strlen(args->pathName) + strlen(entry->d_name) + 2);
@@ -249,7 +249,7 @@ void *handleDirectory(void *input) {
                 pthread_create(&thread, NULL, handleDirectory, newArgs);
             else
                 pthread_create(&thread, NULL, handleFile, newArgs);
-            pThreads[currPThread] = thread;
+            pThreads[currPThread] = &thread;
             currPThread++;
 
         }
@@ -257,7 +257,7 @@ void *handleDirectory(void *input) {
     closedir(currDir);
 
     for (int i = 0; i < currPThread; i++) {
-        int r = pthread_join(pThreads[i], NULL);
+        int r = pthread_join(*(pThreads[i]), NULL);
         if (r != 0) {
             printf("An error has ocurred while joining threads at %s \n", dirPath);
             return NULL;
