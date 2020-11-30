@@ -361,27 +361,25 @@ int main(int argc, char **argv) {
     handleDirectory(args);
 
 
-    // struct fileNode *ptr = args->head;
-    // while (ptr != NULL) {
-    //     printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
-    //     struct wordNode *wordPtr = ptr->words;
-    //     while (wordPtr != NULL) {
-    //         printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
-    //         wordPtr = wordPtr->next;
-    //     }
-    //     printf("NULL\n|\n|\n");
-    //     ptr = ptr->next;
-    // }
-    // printf("NULL\n");
+    struct fileNode *ptr = args->head;
+    while (ptr != NULL) {
+        printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
+        struct wordNode *wordPtr = ptr->words;
+        while (wordPtr != NULL) {
+            printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
+            wordPtr = wordPtr->next;
+        }
+        printf("NULL\n|\n|\n");
+        ptr = ptr->next;
+    }
+    printf("NULL\n");
 
     struct fileNode *sortedFiles = NULL;
-    struct fileNode *sortingPtr = head;
+    struct fileNode *sortingPtr = args->head;
     while (sortingPtr != NULL) {
         sortedFiles = sortSharedStructure(sortedFiles, sortingPtr);
         sortingPtr = sortingPtr->next;
     }
-    // printf("%s %lf\n", sortedFiles->fileName, sortedFiles->wordCount);
-    // printf("%s %lf\n", sortedFiles->next->fileName, sortedFiles->next->wordCount);
 
     // struct fileNode* t = sortedFiles;
     // while(t != NULL){
@@ -398,29 +396,29 @@ int main(int argc, char **argv) {
     while (ptr1 != NULL) {
         ptr2 = ptr1->next;
         while (ptr2 != NULL) {
-            printf("%s %s\n", ptr1->fileName, ptr2->fileName);
             finalValHead = jsd(ptr1, ptr2, finalValHead);
             ptr2 = ptr2->next;
         }
+        ptr1=ptr1->next;
     }
 
-    struct fileNode *ptr = head;
-    while (ptr != NULL) {
-        printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
-        struct wordNode *wordPtr = ptr->words;
-        while (wordPtr != NULL) {
-            printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
-            wordPtr = wordPtr->next;
-        }
-        ptr1 = ptr1->next;
-    }
+    // struct fileNode *ptr = head;
+    // while (ptr != NULL) {
+    //     printf("File: %s with %f words-- Words: ", ptr->fileName, ptr->wordCount);
+    //     struct wordNode *wordPtr = ptr->words;
+    //     while (wordPtr != NULL) {
+    //         printf("[\"%s\" count = %f  dprob = %f] -> ", wordPtr->word, wordPtr->numWords, wordPtr->dProb);
+    //         wordPtr = wordPtr->next;
+    //     }
+    //     ptr1 = ptr1->next;
+    // }
 
     struct finalValNode *res = finalValHead;
 
     while (res != NULL) {
         // printf("%s %s %lf\n", res->firstName, res->secondName, res->jsd);
         printJSD(res->jsd);
-        printf("%s %s\n", res->firstName, res->secondName);
+        printf("\"%s\" \"%s\"\n", res->firstName, res->secondName);
 
         res = res->next;
     }
@@ -481,7 +479,7 @@ struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct 
 
     while (ptr1 != NULL && ptr2 != NULL) {
         int cmp = strcmp(ptr1->word, ptr2->word);
-        struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
+        struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct JSDNode));
         if (cmp == 0) {
             temp->token = ptr1->word;
             temp->firstProb = ptr1->dProb;
@@ -517,7 +515,7 @@ struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct 
 
     if (ptr1 == NULL && ptr2 != NULL) {
         while (ptr2 != NULL) {
-            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
+            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct JSDNode));
             temp->token = ptr2->word;
             temp->firstProb = 0;
             temp->secondProb = ptr2->dProb;
@@ -534,7 +532,7 @@ struct finalValNode *jsd(struct fileNode *file1, struct fileNode *file2, struct 
         }
     } else if (ptr1 != NULL && ptr2 == NULL) {
         while (ptr1 != NULL) {
-            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct wordNode));
+            struct JSDNode *temp = (struct JSDNode *) malloc(sizeof(struct JSDNode));
             temp->token = ptr1->word;
             temp->firstProb = ptr1->dProb;
             temp->next = NULL;
