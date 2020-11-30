@@ -73,6 +73,8 @@ void *handleFile(void *input) {
     int fileDesc = open(args->pathName, O_RDONLY);
     if (fileDesc == -1) {
         printf("File %s is inaccessible. Returning...\n", args->pathName);
+        free(args->pathName);
+        free(args);
         return NULL;
     }
 
@@ -210,6 +212,8 @@ void *handleDirectory(void *input) {
     DIR *currDir = opendir(dirPath);
     if (currDir == NULL) {
         printf("Directory %s is inaccessible. Returning...\n", dirPath);
+        free(args->pathName);
+        free(args);
         return NULL;
     }
     int numPThreads = 10;
@@ -250,15 +254,15 @@ void *handleDirectory(void *input) {
             newPathName = NULL;
             newArgs->head = args->head;
             newArgs->lock = args->lock;
-            pThreads[currPThread] = thread;
             int ret;
             if (entry->d_type == DT_DIR)
-                ret = pthread_create(&pThreads[currPThread], NULL, handleDirectory, newArgs);
+                ret = pthread_create(&thread, NULL, handleDirectory, newArgs);
             else
-                ret = pthread_create(&pThreads[currPThread], NULL, handleFile, newArgs);
+                ret = pthread_create(&thread, NULL, handleFile, newArgs);
             if (ret != 0) {
                 printf("Error while creating pthread\n");
             }
+            pThreads[currPThread] = thread;
             currPThread++;
         }
     }
@@ -268,7 +272,6 @@ void *handleDirectory(void *input) {
         int r = pthread_join(pThreads[i], NULL);
         if (r != 0) {
             printf("An error has ocurred while joining threads at %s \n", dirPath);
-            return NULL;
         }
     }
     free(pThreads);
